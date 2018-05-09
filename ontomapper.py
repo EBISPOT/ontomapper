@@ -65,6 +65,7 @@ def parse_ss(spreadsheet, colno):
     try:
         spot.newsflash("Spreadsheet location is %s" % spreadsheet)
         spot.newsflash("Column index is %d" % colno)
+
         url_bool = re.compile('[a-zA-Z](\w|[-+.])*://.*')
         # filestuff = None
         if url_bool.match(spreadsheet):
@@ -76,10 +77,10 @@ def parse_ss(spreadsheet, colno):
             filestuff = io.StringIO(r.content.decode('utf-8'))
         else:
             filestuff = spreadsheet
-        source_df = pandas.read_csv(filestuff, sep='\t', low_memory=False, keep_default_na=False)
+
         spot.newsflash("Pandafying spreadsheet ...")
-        #
-        # source_iris = source_df.as_matrix(columns=colno)
+        source_df = pandas.read_csv(filestuff, sep='\t', low_memory=False, keep_default_na=False)
+
         spot.newsflash("Getting source terms ...")
         source_iris = source_df.iloc[:, colno]
         # iri_lists = source_iris.apply(lambda x: x.split(", "))
@@ -106,7 +107,7 @@ def parse_ss(spreadsheet, colno):
     return ss_dict
 
 
-def map_iris(iri_dict, target_ontologies, threshold, use_paxo, oxo_inner_url, query_size):
+def map_iris(iri_dict, target_ontologies, threshold, use_paxo, oxo_inner_url, query_size, verbose):
     quantified_url = "%s?size=%d" % (oxo_inner_url, query_size)
     data = {'ids': list(iri_dict.keys()), 'mappingTarget': target_ontologies}
     json_strings = []
@@ -116,7 +117,7 @@ def map_iris(iri_dict, target_ontologies, threshold, use_paxo, oxo_inner_url, qu
         reply = requests.post(quantified_url, data)
         json_content = reply.content
         json_string = json.loads(json_content)
-        spot.newsflash(json_string)
+        spot.newsflash(json_string, verbose)
         json_strings.append(json_string)
         these_results = json_string["_embedded"]["searchResults"]
         for this_result in these_results:
@@ -145,22 +146,22 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
     return panda_output
 
 
-def re_ontologise(input, output, format, column_index, keep, target, uri_format, boundary, paxo, oxo_url, config, quantity):
+def re_ontologise(input, output, format, column_index, keep, target, uri_format, boundary, paxo, oxo_url, quantity, verbose):
 
     spot.newsflash("Length of target ontology array is %d" % len(target))
     ss_dict = parse_ss(input, column_index)
     iri_map = ss_dict['unique_iris']
     panda_original = ss_dict['pandafued']
     spot.newsflash("Calling map_iris with url = '%s' ..." % oxo_url)
-    map_iris(iri_map, target, boundary, paxo, oxo_url, quantity)
+    map_iris(iri_map, target, boundary, paxo, oxo_url, quantity, verbose)
     spot.newsflash("Calling augment ...")
     # panda_enriched = augment(panda_original, iri_map, format, column_index, keep, uri_format)
     """ Print out augmented_panda here ... """
-    spot.newsflash('No. of dictionary elements: ' + str(len(ss_dict)))
-    spot.newsflash('No. of rows in spreadsheet: ' + str(len(iri_map)))
-    spot.newsflash('No. of unique IRIs: ' + str(len(panda_original)))
-    spot.newsflash()
-    spot.newsflash(ss_dict['unique_iris'])
+    spot.newsflash("No. of dictionary elements: %d" % len(ss_dict))
+    spot.newsflash("No. of rows in spreadsheet: %d" % len(iri_map))
+    spot.newsflash("No. of unique IRIs: %d" % len(panda_original))
+    spot.newsflash('', verbose)
+    spot.newsflash(ss_dict['unique_iris'], verbose)
     # spot.newsflash(ss_dict.keys())
     # for spot_key in ss_dict:
     #     spot.newsflash(spot_key)
@@ -178,7 +179,8 @@ def main():
     """ First of all, get configuration info from file """
     ontoconfig = configparser.ConfigParser(os.environ)
     ontoconfig.optionxform = str
-    ontoconfig.read(vars(parser.parse_args())['config'])
+    namespace, extra = parser.parse_known_args()
+    ontoconfig.read(namespace.config)
 
     # parser.add_argument('-i', '--input', default=ontoconfig.get('Params', 'gwas_file'))
     parser.add_argument('-i', '--input', default=ontoconfig.get('Params', 'gwas_spreadsheet'))
@@ -191,11 +193,13 @@ def main():
     parser.add_argument('-b', '--boundary', type=int, default=100)
     parser.add_argument('-x', '--oxo', default='pub')
     parser.add_argument('-p', '--paxo', type=bool, nargs='?', const=True, default=False)
-    parser.add_argument('-q', '--quantity', default=ontoconfig.getint('Params', 'api_record_quantity'))
+    parser.add_argument('-q', '--quantity', type=int, default=ontoconfig.getint('Params', 'api_record_quantity'))
+    parser.add_argument('-v', '--verbose', type=bool, nargs='?', const=True, default=False)
     args = parser.parse_args()
     """ vars returns a dictionary from the Namespace object; """
     arg_dict = vars(args)
-    spot.newsflash(arg_dict)
+    arg_dict.pop('config')
+    spot.newsflash(arg_dict, arg_dict['verbose'])
 
     oxo_url = ''
     try:
@@ -205,7 +209,7 @@ def main():
     arg_dict.pop('oxo')
     arg_dict.update({'oxo_url': oxo_url})
 
-    spot.newsflash(arg_dict)
+    spot.newsflash(arg_dict, arg_dict['verbose'])
 
     """ ** unpacks a dictionary """
     re_ontologise(**arg_dict)
