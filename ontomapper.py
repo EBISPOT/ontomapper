@@ -30,11 +30,12 @@ __PARAMETERS__ (to main program: all non-positional key/value pairs, to be initi
     10. paxo         : use 'experimental' PAXO code?; boolean, default = no
     11. config       : configuration file path
     12. quantity     : no. of query terms to include in single API call
-    13. ????         : source ontology from which terms in existing spreadsheet come; default = 'EFO' --- Probably
+    13. verbose      : do we want a bunch of large json objects dumped to standard error?; boolean, default = no
+    14. ????         : source ontology from which terms in existing spreadsheet come; default = 'EFO' --- Probably
                        unnecessary! --- check!!
-    14. ????         : input format of source IRIs?
-    15. ????         : negation operators for the two binary parameters? ... probably unnecessary.
-    16. ????         : column header as mutually exlusive alternative to column index? --- does this have implications
+    15. ????         : input format of source IRIs?
+    16. ????         : negation operators for the three boolean parameters? ... probably unnecessary.
+    17. ????         : column header as mutually exlusive alternative to column index? --- does this have implications
                        for processing of the column, inside and outside pandas?
 
 
