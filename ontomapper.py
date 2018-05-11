@@ -7,7 +7,7 @@ import json
 # from configparser import ConfigParser
 import configparser
 import os
-import pandas
+import pandas as pd
 import re
 import requests
 import spotilities as spot
@@ -37,6 +37,7 @@ __PARAMETERS__ (to main program: all non-positional key/value pairs, to be initi
     16. ????         : negation operators for the three boolean parameters? ... probably unnecessary.
     17. ????         : column header as mutually exlusive alternative to column index? --- does this have implications
                        for processing of the column, inside and outside pandas?
+    18. ????         : option to change format of incoming IRIs before re-output (implies --keep)
 
 
 __FUNCTIONS__
@@ -80,7 +81,7 @@ def parse_ss(spreadsheet, colno):
             filestuff = spreadsheet
 
         spot.newsflash("Pandafying spreadsheet ...")
-        source_df = pandas.read_csv(filestuff, sep='\t', low_memory=False, keep_default_na=False)
+        source_df = pd.read_csv(filestuff, sep='\t', low_memory=False, keep_default_na=False)
 
         spot.newsflash("Getting source terms ...")
         source_iris = source_df.iloc[:, colno]
@@ -143,7 +144,60 @@ def map_iris(iri_dict, target_ontologies, threshold, use_paxo, oxo_inner_url, qu
 
 
 def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format):
-    panda_output = panda_input.iloc[:, :(colno - 1)]
+    colname = panda_input.columns[colno]
+    out_columns = panda_input.columns
+    spot.newsflash('Here are the pandas columns')
+    spot.newsflash(out_columns)
+    spot.newsflash()
+    spot.newsflash('Here is the pandas dataframe')
+    panda_output = pd.DataFrame(columns=out_columns)
+    spot.newsflash(panda_output)
+    for in_tuple in panda_input.itertuples():
+        # source_string = in_tuple[colname]
+        source_string = in_tuple[colno]
+        source_terms = source_string.split(", ")
+        target_groups = {}
+        if table_format == 'in-situ':
+            target_groups.setdefault('__source__', source_terms )
+        for source_term in source_terms:
+            # map_dict = iri_map[source_term]
+            map_dict = iri_map.get(source_term)
+            if map_dict:
+                for m in map_dict:
+                    """ target_groups assigned one key per target ontology --- NOT per source term in source cell! """
+                    target_groups.setdefault(m, []).append(map_dict[m])
+        for target_group in target_groups:
+            target_groups[target_group] = ', '.join(target_groups[target_group])
+        tg_series = pd.Series(target_groups)
+
+        out_dict_list = []
+
+        if table_format in {'in-situ', 'uni-row', 'uni-column'}:
+            target_string = ', '.join(tg_series.values)
+
+        if table_format in {'in-situ', 'uni-row', 'multi-row'}:
+            out_dict = dict(zip(out_columns, in_tuple))
+
+            if table_format == 'in-situ' or keep_original:
+                if table_format == 'in-situ':
+                    out_dict[colname] = target_string
+                out_dict_list.append(out_dict)
+
+            if table_format == 'uni-row':
+                out_dict_extra = dict(out_dict)
+                out_dict_extra[colname] = target_string
+                out_dict_list.append(out_dict_extra)
+
+            elif table_format == 'multi-row':
+                for target, hit in tg_series:
+                    out_dict_iter = dict(out_dict)
+                    out_dict_iter[colname] = hit
+                    out_dict_list.append(out_dict_iter)
+
+        """ Now need to handle uni- and multi-column outputs """
+
+        panda_output = panda_output.append(out_dict_list)
+
     return panda_output
 
 
@@ -156,7 +210,7 @@ def re_ontologise(input, output, format, column_index, keep, target, uri_format,
     spot.newsflash("Calling map_iris with url = '%s' ..." % oxo_url)
     map_iris(iri_map, target, boundary, paxo, oxo_url, quantity, verbose)
     spot.newsflash("Calling augment ...")
-    # panda_enriched = augment(panda_original, iri_map, format, column_index, keep, uri_format)
+    gwas_enriched = augment(panda_original, iri_map, format, column_index, keep, uri_format)
     """ Print out augmented_panda here ... """
     spot.newsflash("No. of dictionary elements: %d" % len(ss_dict))
     spot.newsflash("No. of rows in spreadsheet: %d" % len(iri_map))
@@ -170,6 +224,8 @@ def re_ontologise(input, output, format, column_index, keep, target, uri_format,
     # for iri_key in ss_dict['unique_iris']:
     #     spot.newsflash(iri_key)
     # spot.newsflash(ss_dict['unique_iris'])
+    spot.newsflash("Outputting enriched GWAS spreadsheet ...")
+    print(gwas_enriched.to_csv())
 
 
 def main():
@@ -186,13 +242,14 @@ def main():
     # parser.add_argument('-i', '--input', default=ontoconfig.get('Params', 'gwas_file'))
     parser.add_argument('-i', '--input', default=ontoconfig.get('Params', 'gwas_spreadsheet'))
     parser.add_argument('-o', '--output', default='')
-    parser.add_argument('-f', '--format', default='multi-column')
-    parser.add_argument('-c', '--column-index', type=int, default=35)
+    parser.add_argument('-f', '--format', default='multi-column',
+                        choices=['in-situ', 'uni-column', 'multi-column', 'uni-row', 'multi-row'])
+    parser.add_argument('-c', '--column-index', type=int, default=36)
     parser.add_argument('-k', '--keep', type=bool, nargs='?', const=True, default=False)
     parser.add_argument('-t', '--target', default=['mesh'], nargs='+')
     parser.add_argument('-u', '--uri-format', default='long')
     parser.add_argument('-b', '--boundary', type=int, default=100)
-    parser.add_argument('-x', '--oxo', default='pub')
+    parser.add_argument('-x', '--oxo', default='pub', choices=['pub', 'dev'])
     parser.add_argument('-p', '--paxo', type=bool, nargs='?', const=True, default=False)
     parser.add_argument('-q', '--quantity', type=int, default=ontoconfig.getint('Params', 'api_record_quantity'))
     parser.add_argument('-v', '--verbose', type=bool, nargs='?', const=True, default=False)
