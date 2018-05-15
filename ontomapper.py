@@ -81,7 +81,8 @@ def parse_ss(spreadsheet, colno):
             filestuff = spreadsheet
 
         spot.newsflash("Pandafying spreadsheet ...")
-        source_df = pd.read_csv(filestuff, sep='\t', low_memory=False, keep_default_na=False)
+        source_df = pd.read_table(filestuff, low_memory=False, keep_default_na=False)
+        source_df = source_df.head(6000)
 
         spot.newsflash("Getting source terms ...")
         source_iris = source_df.iloc[:, colno]
@@ -152,31 +153,43 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
     spot.newsflash('Here is the pandas dataframe')
     panda_output = pd.DataFrame(columns=out_columns)
     spot.newsflash(panda_output)
+    tuple_counter = 0
+    tt0 = time.time()
     for in_tuple in panda_input.itertuples():
+        """ Need to convert back to regular tuple, from pandafied named tuple with extra leading index number """
+        in_supple = tuple(in_tuple[1:])
         # source_string = in_tuple[colname]
-        source_string = in_tuple[colno]
+        source_string = in_supple[colno]
         source_terms = source_string.split(", ")
         target_groups = {}
         if table_format == 'in-situ':
-            target_groups.setdefault('__source__', source_terms )
+            """ Key '00source00' is lazy, collational way of placing source terms at top of list, where we want them """
+            target_groups.setdefault('00source00', source_terms )
         for source_term in source_terms:
+            # spot.newsflash("Source term is %s" % source_term)
             # map_dict = iri_map[source_term]
             map_dict = iri_map.get(source_term)
             if map_dict:
                 for m in map_dict:
                     """ target_groups assigned one key per target ontology --- NOT per source term in source cell! """
                     target_groups.setdefault(m, []).append(map_dict[m])
+                    # spot.newsflash("Found term %s" % map_dict[m])
         for target_group in target_groups:
             target_groups[target_group] = ', '.join(target_groups[target_group])
         tg_series = pd.Series(target_groups)
+        # tg_series = tg_series.reindex(sorted(tg_series.index))
+        # spot.newsflash(tg_series)
 
         out_dict_list = []
 
         if table_format in {'in-situ', 'uni-row', 'uni-column'}:
             target_string = ', '.join(tg_series.values)
+            # spot.newsflash("Additions to %s from MeSH: %s" % (source_string, target_string))
+            # spot.newsflash()
 
         if table_format in {'in-situ', 'uni-row', 'multi-row'}:
-            out_dict = dict(zip(out_columns, in_tuple))
+            out_dict = dict(zip(out_columns, in_supple))
+            # spot.newsflash(out_dict)
 
             if table_format == 'in-situ' or keep_original:
                 if table_format == 'in-situ':
@@ -196,7 +209,13 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
 
         """ Now need to handle uni- and multi-column outputs """
 
-        panda_output = panda_output.append(out_dict_list)
+        panda_output = panda_output.append(out_dict_list, ignore_index=True)
+        tuple_counter += 1
+        if tuple_counter % 1000 == 0:
+            tt1 = time.time()
+            spot.newsflash("Processed %d thousand input records: took increment of %f seconds" %
+                           (int(tuple_counter / 1000), float(tt1 - tt0)))
+            tt0 = tt1
 
     return panda_output
 
@@ -225,7 +244,7 @@ def re_ontologise(input, output, format, column_index, keep, target, uri_format,
     #     spot.newsflash(iri_key)
     # spot.newsflash(ss_dict['unique_iris'])
     spot.newsflash("Outputting enriched GWAS spreadsheet ...")
-    print(gwas_enriched.to_csv())
+    print(gwas_enriched.to_csv(index=False))
 
 
 def main():
@@ -244,7 +263,7 @@ def main():
     parser.add_argument('-o', '--output', default='')
     parser.add_argument('-f', '--format', default='multi-column',
                         choices=['in-situ', 'uni-column', 'multi-column', 'uni-row', 'multi-row'])
-    parser.add_argument('-c', '--column-index', type=int, default=36)
+    parser.add_argument('-c', '--column-index', type=int, default=35)
     parser.add_argument('-k', '--keep', type=bool, nargs='?', const=True, default=False)
     parser.add_argument('-t', '--target', default=['mesh'], nargs='+')
     parser.add_argument('-u', '--uri-format', default='long')
