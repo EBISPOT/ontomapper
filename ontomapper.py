@@ -82,7 +82,7 @@ def parse_ss(spreadsheet, colno):
 
         spot.newsflash("Pandafying spreadsheet ...")
         source_df = pd.read_table(filestuff, low_memory=False, keep_default_na=False)
-        source_df = source_df.head(6000)
+        # source_df = source_df.head(6000)
 
         spot.newsflash("Getting source terms ...")
         source_iris = source_df.iloc[:, colno]
@@ -151,9 +151,11 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
     spot.newsflash(out_columns)
     spot.newsflash()
     spot.newsflash('Here is the pandas dataframe')
-    panda_output = pd.DataFrame(columns=out_columns)
-    spot.newsflash(panda_output)
-    tuple_counter = 0
+    # panda_output = pd.DataFrame(columns=out_columns)
+    # spot.newsflash(panda_output)
+    in_tuple_counter = 0
+    # out_tuple_counter = 0
+    out_dict_list = []
     tt0 = time.time()
     for in_tuple in panda_input.itertuples():
         """ Need to convert back to regular tuple, from pandafied named tuple with extra leading index number """
@@ -180,7 +182,7 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
         # tg_series = tg_series.reindex(sorted(tg_series.index))
         # spot.newsflash(tg_series)
 
-        out_dict_list = []
+        # out_dict_list = []
 
         if table_format in {'in-situ', 'uni-row', 'uni-column'}:
             target_string = ', '.join(tg_series.values)
@@ -209,14 +211,21 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
 
         """ Now need to handle uni- and multi-column outputs """
 
-        panda_output = panda_output.append(out_dict_list, ignore_index=True)
-        tuple_counter += 1
-        if tuple_counter % 1000 == 0:
+        # panda_output = panda_output.append(out_dict_list, ignore_index=True)
+
+        # for od in out_dict_list:
+        #     panda_output.loc[out_tuple_counter] = pd.Series(od)
+        #     out_tuple_counter += 1
+
+        in_tuple_counter += 1
+        if in_tuple_counter % 1000 == 0:
             tt1 = time.time()
             spot.newsflash("Processed %d thousand input records: took increment of %f seconds" %
-                           (int(tuple_counter / 1000), float(tt1 - tt0)))
+                           (int(in_tuple_counter / 1000), float(tt1 - tt0)))
             tt0 = tt1
 
+    spot.newsflash("No. of records in output spreadsheet is %d" % len(out_dict_list))
+    panda_output = pd.DataFrame(out_dict_list, columns=out_columns)
     return panda_output
 
 
@@ -232,8 +241,8 @@ def re_ontologise(input, output, format, column_index, keep, target, uri_format,
     gwas_enriched = augment(panda_original, iri_map, format, column_index, keep, uri_format)
     """ Print out augmented_panda here ... """
     spot.newsflash("No. of dictionary elements: %d" % len(ss_dict))
-    spot.newsflash("No. of rows in spreadsheet: %d" % len(iri_map))
-    spot.newsflash("No. of unique IRIs: %d" % len(panda_original))
+    spot.newsflash("No. of rows in spreadsheet: %d" % len(panda_original))
+    spot.newsflash("No. of unique IRIs: %d" % len(iri_map))
     spot.newsflash('', verbose)
     spot.newsflash(ss_dict['unique_iris'], verbose)
     # spot.newsflash(ss_dict.keys())
@@ -244,6 +253,7 @@ def re_ontologise(input, output, format, column_index, keep, target, uri_format,
     #     spot.newsflash(iri_key)
     # spot.newsflash(ss_dict['unique_iris'])
     spot.newsflash("Outputting enriched GWAS spreadsheet ...")
+    # print(gwas_enriched.head(30).to_csv(index=False))
     print(gwas_enriched.to_csv(index=False))
 
 
