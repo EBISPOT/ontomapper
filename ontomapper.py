@@ -116,13 +116,20 @@ def map_iris(iri_dict, target_ontologies, threshold, use_paxo, oxo_inner_url, qu
     json_strings = []
     data['distance'] = '1' if threshold >= 100 else '2' if threshold >= 75 else '3' if threshold >= 50 else ''
     """ If boundary less than 50%, throw 'confidence too low' error: need to code! """
+    oxo_hit_counter = 0
     while quantified_url is not None:
         reply = requests.post(quantified_url, data)
+        oxo_hit_counter += 1
         json_content = reply.content
         json_string = json.loads(json_content)
         spot.newsflash(json_string, verbose)
         json_strings.append(json_string)
-        these_results = json_string["_embedded"]["searchResults"]
+        try:
+            these_results = json_string["_embedded"]["searchResults"]
+        except:
+            spot.newsflash("IRI map load aborted: OxO hit %d times, with %d query terms" %
+                           (oxo_hit_counter, oxo_hit_counter * query_size))
+            raise
         for this_result in these_results:
             hits = this_result["mappingResponseList"]
             ontology_dict = {}
@@ -150,13 +157,11 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
     spot.newsflash('Here are the pandas columns')
     spot.newsflash(out_columns)
     spot.newsflash()
-    spot.newsflash('Here is the pandas dataframe')
-    # panda_output = pd.DataFrame(columns=out_columns)
-    # spot.newsflash(panda_output)
     in_tuple_counter = 0
     # out_tuple_counter = 0
     out_dict_list = []
     tt0 = time.time()
+    tt1 = tt0
     for in_tuple in panda_input.itertuples():
         """ Need to convert back to regular tuple, from pandafied named tuple with extra leading index number """
         in_supple = tuple(in_tuple[1:])
@@ -164,7 +169,7 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
         source_string = in_supple[colno]
         source_terms = source_string.split(", ")
         target_groups = {}
-        if table_format == 'in-situ':
+        if table_format == 'in-situ' and keep_original:
             """ Key '00source00' is lazy, collational way of placing source terms at top of list, where we want them """
             target_groups.setdefault('00source00', source_terms )
         for source_term in source_terms:
@@ -194,17 +199,18 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
             # spot.newsflash(out_dict)
 
             if table_format == 'in-situ' or keep_original:
-                if table_format == 'in-situ':
-                    out_dict[colname] = target_string
-                out_dict_list.append(out_dict)
+                if len(tg_series) > 0 or keep_original:
+                    if table_format == 'in-situ':
+                        out_dict[colname] = target_string
+                    out_dict_list.append(out_dict)
 
-            if table_format == 'uni-row':
+            if table_format == 'uni-row' and len(tg_series) > 0:
                 out_dict_extra = dict(out_dict)
                 out_dict_extra[colname] = target_string
                 out_dict_list.append(out_dict_extra)
 
             elif table_format == 'multi-row':
-                for target, hit in tg_series:
+                for hit in tg_series.values:
                     out_dict_iter = dict(out_dict)
                     out_dict_iter[colname] = hit
                     out_dict_list.append(out_dict_iter)
@@ -218,11 +224,11 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
         #     out_tuple_counter += 1
 
         in_tuple_counter += 1
-        if in_tuple_counter % 1000 == 0:
-            tt1 = time.time()
-            spot.newsflash("Processed %d thousand input records: took increment of %f seconds" %
-                           (int(in_tuple_counter / 1000), float(tt1 - tt0)))
-            tt0 = tt1
+        if in_tuple_counter % 4000 == 0:
+            tt2 = time.time()
+            spot.newsflash("Processed %d thousand input records: took %.2f s (increment of %.2f s)" %
+                           (int(in_tuple_counter / 1000), float(tt2 - tt0), float(tt2 - tt1)))
+            tt1 = tt2
 
     spot.newsflash("No. of records in output spreadsheet is %d" % len(out_dict_list))
     panda_output = pd.DataFrame(out_dict_list, columns=out_columns)
@@ -234,6 +240,12 @@ def re_ontologise(input, output, format, column_index, keep, target, uri_format,
     spot.newsflash("Length of target ontology array is %d" % len(target))
     ss_dict = parse_ss(input, column_index)
     iri_map = ss_dict['unique_iris']
+    """ Print out list of source iris in iri_map """
+    # iri_counter = 0
+    # for src_iri in iri_map:
+        ### print("%d\t%s\t%s" % (iri_counter, src_iri, iri_map[src_iri]))  # Print values _and_ keys
+        # spot.newsflash("%d\t%s" % (iri_counter, src_iri))
+        # iri_counter += 1
     panda_original = ss_dict['pandafued']
     spot.newsflash("Calling map_iris with url = '%s' ..." % oxo_url)
     map_iris(iri_map, target, boundary, paxo, oxo_url, quantity, verbose)
@@ -253,8 +265,8 @@ def re_ontologise(input, output, format, column_index, keep, target, uri_format,
     #     spot.newsflash(iri_key)
     # spot.newsflash(ss_dict['unique_iris'])
     spot.newsflash("Outputting enriched GWAS spreadsheet ...")
-    # print(gwas_enriched.head(30).to_csv(index=False))
-    print(gwas_enriched.to_csv(index=False))
+    # print(gwas_enriched.head(30).to_csv(index=False, sep='\t'))
+    print(gwas_enriched.to_csv(index=False, sep='\t'))
 
 
 def main():
@@ -274,7 +286,11 @@ def main():
     parser.add_argument('-f', '--format', default='multi-column',
                         choices=['in-situ', 'uni-column', 'multi-column', 'uni-row', 'multi-row'])
     parser.add_argument('-c', '--column-index', type=int, default=35)
-    parser.add_argument('-k', '--keep', type=bool, nargs='?', const=True, default=False)
+    # parser.add_argument('-k', '--keep', type=bool, nargs='?', const=True, default=True)
+    kmeg = parser.add_mutually_exclusive_group(required=False)
+    kmeg.add_argument('-k', '--keep', dest='keep', action='store_true')
+    kmeg.add_argument('-d', '--no-keep', dest='keep', action='store_false')
+    parser.set_defaults(keep=True)
     parser.add_argument('-t', '--target', default=['mesh'], nargs='+')
     parser.add_argument('-u', '--uri-format', default='long')
     parser.add_argument('-b', '--boundary', type=int, default=100)
