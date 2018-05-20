@@ -10,7 +10,8 @@ import os
 import pandas as pd
 import re
 import requests
-import spotilities as spot
+# import spotilities as spot
+from spotilities import newsflash
 import time
 
 
@@ -65,47 +66,47 @@ def parse_ss(spreadsheet, colno):
     ss_dict = {}
     iri_map = {}
     try:
-        spot.newsflash("Spreadsheet location is %s" % spreadsheet)
-        spot.newsflash("Column index is %d" % colno)
+        newsflash("Spreadsheet location is %s" % spreadsheet)
+        newsflash("Column index is %d" % colno)
 
         url_bool = re.compile('[a-zA-Z](\w|[-+.])*://.*')
         # filestuff = None
         if url_bool.match(spreadsheet):
             t0 = time.time()
-            spot.newsflash("Getting spreadsheet from URL ...")
+            newsflash("Getting spreadsheet from URL ...")
             r = requests.get(spreadsheet, allow_redirects=True)
             t1 = time.time()
-            spot.newsflash("It took %f seconds to retrieve the spreadsheet." % float(t1 - t0))
+            newsflash("It took %f seconds to retrieve the spreadsheet." % float(t1 - t0))
             filestuff = io.StringIO(r.content.decode('utf-8'))
         else:
             filestuff = spreadsheet
 
-        spot.newsflash("Pandafying spreadsheet ...")
+        newsflash("Pandafying spreadsheet ...")
         source_df = pd.read_table(filestuff, low_memory=False, keep_default_na=False)
         # source_df = source_df.head(6000)
 
-        spot.newsflash("Getting source terms ...")
+        newsflash("Getting source terms ...")
         source_iris = source_df.iloc[:, colno]
         # iri_lists = source_iris.apply(lambda x: x.split(", "))
         """
         1. Return empty array if empty string.
         2. Might want to split by comma only, then remove spaces: more robust!
         """
-        spot.newsflash("Breaking source term strings into lists ...")
+        newsflash("Breaking source term strings into lists ...")
         iri_lists = source_iris.apply(lambda x: [] if x == '' else x.split(", "))
         """ Use nested lambdas to collect source IRIs from Series of lists """
-        spot.newsflash("Generate dictionary keyed on unique source terms ...")
+        newsflash("Generate dictionary keyed on unique source terms ...")
         iri_lists.apply(lambda x, y: list(map(lambda z: y.update({z: None}), x)), args=[iri_map])
-        spot.newsflash("Dictionary generated!")
+        newsflash("Dictionary generated!")
         ss_dict.update({'pandafued': source_df})
         ss_dict.update({'unique_iris': iri_map})
-        spot.newsflash("Returning from function 'parse_ss' ...")
+        newsflash("Returning from function 'parse_ss' ...")
     except requests.exceptions.InvalidSchema as is_error:
         """ pandas should have coped with distinguishing text file from URL already """
         # if is_error.
         #     raise
-        spot.newsflash('Error retrieving spreadsheet?')
-        spot.newsflash(is_error)
+        newsflash('Error retrieving spreadsheet?')
+        newsflash(is_error)
         # raise
     return ss_dict
 
@@ -122,12 +123,12 @@ def map_iris(iri_dict, target_ontologies, threshold, use_paxo, oxo_inner_url, qu
         oxo_hit_counter += 1
         json_content = reply.content
         json_string = json.loads(json_content)
-        spot.newsflash(json_string, verbose)
+        newsflash(json_string, verbose)
         json_strings.append(json_string)
         try:
             these_results = json_string["_embedded"]["searchResults"]
         except:
-            spot.newsflash("IRI map load aborted: OxO hit %d times, with %d query terms" %
+            newsflash("IRI map load aborted: OxO hit %d times, with %d query terms" %
                            (oxo_hit_counter, oxo_hit_counter * query_size))
             raise
         for this_result in these_results:
@@ -140,26 +141,30 @@ def map_iris(iri_dict, target_ontologies, threshold, use_paxo, oxo_inner_url, qu
             for okey in ontology_dict:
                 ontology_dict[okey] = ', '.join(ontology_dict[okey])
             iri_dict[this_result["queryId"]] = ontology_dict
-            # spot.newsflash(ontology_dict)
+            # newsflash(ontology_dict)
         try:
             quantified_url = json_string["_links"]["next"]["href"]
         except KeyError:
-            spot.newsflash("Stopped")
+            newsflash("Stopped")
             quantified_url = None
-    spot.newsflash("No. of iterative calls to OxO web API was %d" % len(json_strings))
+    newsflash("No. of iterative calls to OxO web API was %d" % len(json_strings))
     """ Passed-in dictionary object is mutated in situ: no need to return it """
     return None
 
 
 def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format):
     colname = panda_input.columns[colno]
+    prev_colname = panda_input.columns[colno - 1]
+    next_colname = panda_input.columns[colno + 1]
     out_columns = panda_input.columns
-    spot.newsflash('Here are the pandas columns')
-    spot.newsflash(out_columns)
-    spot.newsflash()
+    newsflash('Here are the pandas columns')
+    newsflash(out_columns)
+    newsflash()
     in_tuple_counter = 0
     # out_tuple_counter = 0
     out_dict_list = []
+    if table_format in {'uni-column', 'multi-column'}:
+        extra_col_dict_list = []
     tt0 = time.time()
     tt1 = tt0
     for in_tuple in panda_input.itertuples():
@@ -173,30 +178,30 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
             """ Key '00source00' is lazy, collational way of placing source terms at top of list, where we want them """
             target_groups.setdefault('00source00', source_terms )
         for source_term in source_terms:
-            # spot.newsflash("Source term is %s" % source_term)
+            # newsflash("Source term is %s" % source_term)
             # map_dict = iri_map[source_term]
             map_dict = iri_map.get(source_term)
             if map_dict:
                 for m in map_dict:
                     """ target_groups assigned one key per target ontology --- NOT per source term in source cell! """
                     target_groups.setdefault(m, []).append(map_dict[m])
-                    # spot.newsflash("Found term %s" % map_dict[m])
+                    # newsflash("Found term %s" % map_dict[m])
         for target_group in target_groups:
             target_groups[target_group] = ', '.join(target_groups[target_group])
         tg_series = pd.Series(target_groups)
         # tg_series = tg_series.reindex(sorted(tg_series.index))
-        # spot.newsflash(tg_series)
+        # newsflash(tg_series)
 
         # out_dict_list = []
 
         if table_format in {'in-situ', 'uni-row', 'uni-column'}:
             target_string = ', '.join(tg_series.values)
-            # spot.newsflash("Additions to %s from MeSH: %s" % (source_string, target_string))
-            # spot.newsflash()
+            # newsflash("Additions to %s from MeSH: %s" % (source_string, target_string))
+            # newsflash()
 
         if table_format in {'in-situ', 'uni-row', 'multi-row'}:
             out_dict = dict(zip(out_columns, in_supple))
-            # spot.newsflash(out_dict)
+            # newsflash(out_dict)
 
             if table_format == 'in-situ' or keep_original:
                 if len(tg_series) > 0 or keep_original:
@@ -215,7 +220,17 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
                     out_dict_iter[colname] = hit
                     out_dict_list.append(out_dict_iter)
 
-        """ Now need to handle uni- and multi-column outputs """
+        elif table_format in {'uni-column', 'multi-column'} and (len(tg_series) > 0 or keep_original):
+            """ Now need to handle uni- and multi-column outputs """
+            out_dict = dict(zip(out_columns, in_supple))
+            out_dict_list.append(out_dict)
+            extra_col_dict = {}
+            if table_format == 'multi-column':
+                extra_col_dict = dict(tg_series)
+            elif table_format == 'uni-column':
+                # extra_col_dict = dict({'all_ontologies', ', '.join(tg_series.values)})
+                extra_col_dict = dict({colname: target_string})
+            extra_col_dict_list.append(extra_col_dict)
 
         # panda_output = panda_output.append(out_dict_list, ignore_index=True)
 
@@ -226,45 +241,63 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
         in_tuple_counter += 1
         if in_tuple_counter % 4000 == 0:
             tt2 = time.time()
-            spot.newsflash("Processed %d thousand input records: took %.2f s (increment of %.2f s)" %
+            newsflash("Processed %d thousand input records: took %.2f s (increment of %.2f s)" %
                            (int(in_tuple_counter / 1000), float(tt2 - tt0), float(tt2 - tt1)))
             tt1 = tt2
 
-    spot.newsflash("No. of records in output spreadsheet is %d" % len(out_dict_list))
+    newsflash("No. of records in output spreadsheet is %d" % len(out_dict_list))
     panda_output = pd.DataFrame(out_dict_list, columns=out_columns)
+    if table_format in {'uni-column', 'multi-column'}:
+        ## if not keep_original:
+        ##     newsflash("Dropping original term column ...")
+        ##     panda_output = panda_output.drop(columns=[colname])
+        newsflash("Adding new columns ...")
+        extra_columns_df = pd.DataFrame(extra_col_dict_list,
+                                        columns=[colname] if table_format == 'uni-column' else tg_series.keys())
+        ## panda_output = pd.concat([panda_output, extra_columns_df], axis=1)
+        # panda_output = pd.concat([panda_output.loc[:, :colno - (0 if keep_original else 1)], extra_columns_df,
+        #                           panda_output.loc[:, colno + 1:]], axis=1)
+        # panda_output = pd.concat([panda_output.loc[:, :colno - (0 if keep_original else 1)], extra_columns_df,
+        #                           panda_output.loc[:, colno + 1:]], axis=1)
+        panda_output = pd.concat([panda_output.loc[:, :colname if keep_original else prev_colname], extra_columns_df,
+                                  panda_output.loc[:, next_colname:]], axis=1)
+
     return panda_output
 
 
 def re_ontologise(input, output, format, column_index, keep, target, uri_format, boundary, paxo, oxo_url, quantity, verbose):
 
-    spot.newsflash("Length of target ontology array is %d" % len(target))
+    target = sorted(target)
+    newsflash("Length of target ontology array is %d" % len(target))
+    for t in target:
+        newsflash("Target is %s" % t)
     ss_dict = parse_ss(input, column_index)
     iri_map = ss_dict['unique_iris']
     """ Print out list of source iris in iri_map """
     # iri_counter = 0
     # for src_iri in iri_map:
         ### print("%d\t%s\t%s" % (iri_counter, src_iri, iri_map[src_iri]))  # Print values _and_ keys
-        # spot.newsflash("%d\t%s" % (iri_counter, src_iri))
+        # newsflash("%d\t%s" % (iri_counter, src_iri))
         # iri_counter += 1
     panda_original = ss_dict['pandafued']
-    spot.newsflash("Calling map_iris with url = '%s' ..." % oxo_url)
+    newsflash("Calling map_iris with url = '%s' ..." % oxo_url)
     map_iris(iri_map, target, boundary, paxo, oxo_url, quantity, verbose)
-    spot.newsflash("Calling augment ...")
-    gwas_enriched = augment(panda_original, iri_map, format, column_index, keep, uri_format)
+    newsflash("Calling augment ...")
+    gwas_enriched = augment(panda_original, iri_map, format, column_index, keep, target, uri_format)
     """ Print out augmented_panda here ... """
-    spot.newsflash("No. of dictionary elements: %d" % len(ss_dict))
-    spot.newsflash("No. of rows in spreadsheet: %d" % len(panda_original))
-    spot.newsflash("No. of unique IRIs: %d" % len(iri_map))
-    spot.newsflash('', verbose)
-    spot.newsflash(ss_dict['unique_iris'], verbose)
-    # spot.newsflash(ss_dict.keys())
+    newsflash("No. of dictionary elements: %d" % len(ss_dict))
+    newsflash("No. of rows in spreadsheet: %d" % len(panda_original))
+    newsflash("No. of unique IRIs: %d" % len(iri_map))
+    newsflash('', verbose)
+    newsflash(ss_dict['unique_iris'], verbose)
+    # newsflash(ss_dict.keys())
     # for spot_key in ss_dict:
-    #     spot.newsflash(spot_key)
+    #     newsflash(spot_key)
     """ Enable print to check for uniqueness of IRIs """
     # for iri_key in ss_dict['unique_iris']:
-    #     spot.newsflash(iri_key)
-    # spot.newsflash(ss_dict['unique_iris'])
-    spot.newsflash("Outputting enriched GWAS spreadsheet ...")
+    #     newsflash(iri_key)
+    # newsflash(ss_dict['unique_iris'])
+    newsflash("Outputting enriched GWAS spreadsheet ...")
     # print(gwas_enriched.head(30).to_csv(index=False, sep='\t'))
     print(gwas_enriched.to_csv(index=False, sep='\t'))
 
@@ -302,17 +335,17 @@ def main():
     """ vars returns a dictionary from the Namespace object; """
     arg_dict = vars(args)
     arg_dict.pop('config')
-    spot.newsflash(arg_dict, arg_dict['verbose'])
+    newsflash(arg_dict, arg_dict['verbose'])
 
     oxo_url = ''
     try:
         oxo_url = ontoconfig.get('Params', 'oxo_' + arg_dict['oxo'])
     except:
-        spot.newsflash('OxO config type has no corresponding URL')
+        newsflash('OxO config type has no corresponding URL')
     arg_dict.pop('oxo')
     arg_dict.update({'oxo_url': oxo_url})
 
-    spot.newsflash(arg_dict, arg_dict['verbose'])
+    newsflash(arg_dict, arg_dict['verbose'])
 
     """ ** unpacks a dictionary """
     re_ontologise(**arg_dict)
