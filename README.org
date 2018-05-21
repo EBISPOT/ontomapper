@@ -48,9 +48,9 @@ these have default values):
 1. ~--target ncit mesh doid~ /(example list)/: new ontology, or ontologies, to
    include in the output spreadsheet---supply the switch itself once only,
    followed by a single ontology or a space-separated list;
-2. ~--format [ in-situ | uni-row | multi-row | uni-column | multi-column ]~:
-   choice of how terms from new ontologies are stored in the output spreadsheet,
-   as detailed below:
+2. ~--format ~[ ~in-situ~ | ~uni-row~ | ~multi-row~ | ~uni-column~ |
+   ~multi-column~ ]: choice of how terms from new ontologies are stored in the
+   output spreadsheet, as detailed below:
 
    | option         | description                                                                                                                                                                                                                                        |
    |----------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -58,10 +58,10 @@ these have default values):
    | ~uni-row~      | add an extra row to accommodate new ontology terms---all new terms, from any ontology in the target list, appear in the same cell, while other cells in the new row are copied from the row containing thesource EFO terms                         |
    | ~multi-row~    | add one new extra row per target ontology (if there are any hits)---terms from each target ontology appear together in a dedicated, newly-generated row, while other cells in the new rows are copied from the row containing the source EFO terms |
    | ~uni-column~   | add an extra column to accommodate new ontology terms---all new terms, from any ontology in the target list, appear in the same cell                                                                                                               |
-   | ~multi-column~ | add one new extra column per per target ontology---terms from each target ontology appear together in a dedicated, newly-generated column                                                                                                          |
+   | ~multi‑column~ | add one new extra column per per target ontology---terms from each target ontology appear together in a dedicated, newly-generated column                                                                                                          |
 
-3. ~--keep | --no-keep~: whether to retain the original EFO terms in the output
-   spreadsheet---choosing ~--no-keep~ can mean dropping the original row,
+3. ~--keep~ | ~--no-keep~: whether to retain the original EFO terms in the
+   output spreadsheet---choosing ~--no-keep~ can mean dropping the original row,
    dropping the original column, or both, depending the value of the ~--format~
    switch and whether the EFO terms are mappable or not.
 
