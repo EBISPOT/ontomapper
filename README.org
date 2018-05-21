@@ -48,7 +48,7 @@ these have default values):
 1. ~--target ncit mesh doid~ /(example list)/: new ontology, or ontologies, to
    include in the output spreadsheet---supply the switch itself once only,
    followed by a single ontology or a space-separated list;
-2. ~--format ~[ ~in-situ~ | ~uni-row~ | ~multi-row~ | ~uni-column~ |
+2. ~--format~ [ ~in-situ~ | ~uni-row~ | ~multi-row~ | ~uni-column~ |
    ~multi-column~ ]: choice of how terms from new ontologies are stored in the
    output spreadsheet, as described below:
 
