@@ -27,7 +27,7 @@ __PARAMETERS__ (to main program: all non-positional key/value pairs, to be initi
     6. target        : ontolog[y|ies] to search for equivalent terms; default = MeSH
     7. uri-format    : return format of target IRIs (curies, long form, etc.); default = long form
     8. boundary      : boundary value (%age) for confidence level; default = 100 (OxO distance 1)
-    9. oxo           : 'pub' or 'dev'; default = 'pub'
+    9. oxo_url       : URL of OxO web service; default = public OxO server
     10. paxo         : use 'experimental' PAXO code?; boolean, default = no
     11. config       : configuration file path
     12. quantity     : no. of query terms to include in single API call
@@ -232,12 +232,6 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
                 extra_col_dict = dict({colname: target_string})
             extra_col_dict_list.append(extra_col_dict)
 
-        # panda_output = panda_output.append(out_dict_list, ignore_index=True)
-
-        # for od in out_dict_list:
-        #     panda_output.loc[out_tuple_counter] = pd.Series(od)
-        #     out_tuple_counter += 1
-
         in_tuple_counter += 1
         if in_tuple_counter % 4000 == 0:
             tt2 = time.time()
@@ -248,17 +242,9 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
     newsflash("No. of records in output spreadsheet is %d" % len(out_dict_list))
     panda_output = pd.DataFrame(out_dict_list, columns=out_columns)
     if table_format in {'uni-column', 'multi-column'}:
-        ## if not keep_original:
-        ##     newsflash("Dropping original term column ...")
-        ##     panda_output = panda_output.drop(columns=[colname])
         newsflash("Adding new columns ...")
         extra_columns_df = pd.DataFrame(extra_col_dict_list,
                                         columns=[colname] if table_format == 'uni-column' else tg_series.keys())
-        ## panda_output = pd.concat([panda_output, extra_columns_df], axis=1)
-        # panda_output = pd.concat([panda_output.loc[:, :colno - (0 if keep_original else 1)], extra_columns_df,
-        #                           panda_output.loc[:, colno + 1:]], axis=1)
-        # panda_output = pd.concat([panda_output.loc[:, :colno - (0 if keep_original else 1)], extra_columns_df,
-        #                           panda_output.loc[:, colno + 1:]], axis=1)
         panda_output = pd.concat([panda_output.loc[:, :colname if keep_original else prev_colname], extra_columns_df,
                                   panda_output.loc[:, next_colname:]], axis=1)
 
@@ -283,7 +269,7 @@ def re_ontologise(input, output, format, column_index, keep, target, uri_format,
     newsflash("Calling map_iris with url = '%s' ..." % oxo_url)
     map_iris(iri_map, target, boundary, paxo, oxo_url, quantity, verbose)
     newsflash("Calling augment ...")
-    gwas_enriched = augment(panda_original, iri_map, format, column_index, keep, target, uri_format)
+    gwas_enriched = augment(panda_original, iri_map, format, column_index, keep, uri_format)
     """ Print out augmented_panda here ... """
     newsflash("No. of dictionary elements: %d" % len(ss_dict))
     newsflash("No. of rows in spreadsheet: %d" % len(panda_original))
@@ -304,22 +290,22 @@ def re_ontologise(input, output, format, column_index, keep, target, uri_format,
 
 def main():
 
+    """ First of all, check configuration file """
     parser = argparse.ArgumentParser(description='Type of URI to output, etc.')
     parser.add_argument('-g', '--config', default='./ontomapper.ini')
 
-    """ First of all, get configuration info from file """
+    """ Second of all, get configuration info from configuration file """
     ontoconfig = configparser.ConfigParser(os.environ)
     ontoconfig.optionxform = str
     namespace, extra = parser.parse_known_args()
     ontoconfig.read(namespace.config)
 
-    # parser.add_argument('-i', '--input', default=ontoconfig.get('Params', 'gwas_file'))
+    """ Third of all, parse the rest of the switches, possibly using defaults from configuration file """
     parser.add_argument('-i', '--input', default=ontoconfig.get('Params', 'gwas_spreadsheet'))
     parser.add_argument('-o', '--output', default='')
     parser.add_argument('-f', '--format', default='multi-column',
                         choices=['in-situ', 'uni-column', 'multi-column', 'uni-row', 'multi-row'])
     parser.add_argument('-c', '--column-index', type=int, default=35)
-    # parser.add_argument('-k', '--keep', type=bool, nargs='?', const=True, default=True)
     kmeg = parser.add_mutually_exclusive_group(required=False)
     kmeg.add_argument('-k', '--keep', dest='keep', action='store_true')
     kmeg.add_argument('-d', '--no-keep', dest='keep', action='store_false')
@@ -327,24 +313,15 @@ def main():
     parser.add_argument('-t', '--target', default=['mesh'], nargs='+')
     parser.add_argument('-u', '--uri-format', default='long')
     parser.add_argument('-b', '--boundary', type=int, default=100)
-    parser.add_argument('-x', '--oxo', default='pub', choices=['pub', 'dev'])
+    parser.add_argument('-x', '--oxo_url', default=ontoconfig.get('Params', 'oxo_url'))
     parser.add_argument('-p', '--paxo', type=bool, nargs='?', const=True, default=False)
     parser.add_argument('-q', '--quantity', type=int, default=ontoconfig.getint('Params', 'api_record_quantity'))
     parser.add_argument('-v', '--verbose', type=bool, nargs='?', const=True, default=False)
     args = parser.parse_args()
+
     """ vars returns a dictionary from the Namespace object; """
     arg_dict = vars(args)
     arg_dict.pop('config')
-    newsflash(arg_dict, arg_dict['verbose'])
-
-    oxo_url = ''
-    try:
-        oxo_url = ontoconfig.get('Params', 'oxo_' + arg_dict['oxo'])
-    except:
-        newsflash('OxO config type has no corresponding URL')
-    arg_dict.pop('oxo')
-    arg_dict.update({'oxo_url': oxo_url})
-
     newsflash(arg_dict, arg_dict['verbose'])
 
     """ ** unpacks a dictionary """

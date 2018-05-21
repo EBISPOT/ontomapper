@@ -19,9 +19,15 @@ dispense with the original EFO terms in the output.
 
 ** Dependencies
 
-Python 3.6 and above. Libraries imported should come as standard with a Python
-3.6 distribution; if not, your virtual environment may need to reflect this.
-Imports are at the top of ~ontomapper.py~.
+Python 3.6 and above. Some of the imported libraries come as standard with a
+Python 3.6 distribution; if not, your (virtual) environment may need to reflect
+this. Non-default libraries and their requisite versions are listed in
+~requirements.txt~; assuming the latter is in the default directory, you should
+download these packages using the following command:
+
+#+BEGIN_SRC sh
+  $ pip3 install -r ./requirements.txt
+#+END_SRC
 
 ** Installation
 
@@ -35,19 +41,36 @@ switches as described below, and redirect standard output. Informational
 progress reports get printed to standard error (usually the console).
 
 There are several switches available: most have a default value set, either in
-the executable itself, or the config file, ~ontomapper.ini~; the four main
+the executable itself, or the config file, ~ontomapper.ini~; the three main
 options that you may wish to specify explicitly are as follows (although even
 these have default values):
 
-1. ~--oxo pub | --oxo dev~: whether to use the public or internal EBI version of
-   the OxO web service;
-2. ~--target ncit mesh doid~ /(example list)/: new ontology, or ontologies, to
+1. ~--target ncit mesh doid~ /(example list)/: new ontology, or ontologies, to
    include in the output spreadsheet---supply the switch itself once only,
    followed by a single ontology or a space-separated list;
-3. ~--format [ in-situ | uni-row | multi-row | uni-column | multi-column ]~:
-   choice of terms from new ontologies are stored in the output spreadsheet;
-4. ~--keep | --no-keep~: whether to retain the original EFO terms in the output
-   spreadsheet.
+2. ~--format [ in-situ | uni-row | multi-row | uni-column | multi-column ]~:
+   choice of how terms from new ontologies are stored in the output
+   spreadsheet---each option is described below:
+   a) ~in-situ~: do not increase the number of rows or columns to house any new
+      ontology terms---simply append them to the list existing EFO terms, in the
+      same cell;
+   b) ~uni-row~: add an extra row to accommodate new ontology terms---all new
+      terms, from any ontology in the target list, appear in the same cell,
+      while other cells in the new row are copied from the row containing the
+      source EFO terms;
+   c) ~multi-row~: add one new extra row per target ontology (if there are any
+      hits)---terms from each target ontology appear together in a dedicated,
+      newly-generated row, while other cells in the new rows are copied from the
+      row containing the source EFO terms;
+   d) ~uni-column~: add an extra column to accommodate new ontology terms---all
+      new terms, from any ontology in the target list, appear in the same cell;
+   e) ~multi-column~: add one new extra column per per target ontology---terms
+      from each target ontology appear together in a dedicated, newly-generated
+      column;
+3. ~--keep | --no-keep~: whether to retain the original EFO terms in the output
+   spreadsheet---choosing ~--no-keep~ can mean dropping the original row,
+   dropping the original column, or both, depending the value of the ~--format~
+   switch and whether the EFO terms are mappable or not.
 
 Single-letter short-hands for all the above switches are also available.
 
@@ -56,8 +79,10 @@ Single-letter short-hands for all the above switches are also available.
 To obtain equivalent terms from both MeSH and the Disease Ontology, using the
 public web service, reserving a new column for each new ontology and dispensing
 with the original EFO terms, you can enter the following command (assuming you
-have execute privilege on ~ontomapper.py~), redirecting output to a new
+have 'execute' privilege on ~ontomapper.py~), redirecting output to a new
 tab-separated-variable (spreadsheet) file:
 
-~./ontomapper.py --oxo pub --target mesh doid --format multi-column --no-keep >
-gwas_new.tsv~
+#+BEGIN_SRC sh
+  $ ./ontomapper.py --target mesh doid --format multi-column --no-keep >
+  gwas_new.tsv
+#+END_SRC
