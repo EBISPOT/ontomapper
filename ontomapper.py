@@ -20,8 +20,9 @@ __PARAMETERS__ (to main program: all non-positional key/value pairs, to be initi
 
     1. input         : URL or filename; default = online GWAS spreadsheet
     2. output        : filename; default = standard output
-    3. format        : format of new entries in output spreadsheet: 'in-situ' (requires/implies --keep), 'uni-column',
-                       'multi-column', 'uni-row' or 'multi-row'; default = 'multi-column'
+    3. layout        : layout of new entries in output spreadsheet: 'in-situ', 'uni-column', 'multi-column', 'uni-row'
+                       or 'multi-row'; default = 'multi-column'
+    4. file-format   : input / output spreadsheet file format: 'csv' or 'tsv'; default = 'tsv'
     4. column-index  : column index (starting at 0) to parse for source IRIs; default based on header search?
     5. keep          : whether to retain column containing source IRIs in output; boolean, default = no
     6. target        : ontolog[y|ies] to search for equivalent terms; default = MeSH
@@ -62,7 +63,7 @@ __FUNCTIONS__
 """
 
 
-def parse_ss(spreadsheet, colno):
+def parse_ss(spreadsheet, separator, colno):
     ss_dict = {}
     iri_map = {}
     try:
@@ -82,7 +83,7 @@ def parse_ss(spreadsheet, colno):
             filestuff = spreadsheet
 
         newsflash("Pandafying spreadsheet ...")
-        source_df = pd.read_table(filestuff, low_memory=False, keep_default_na=False)
+        source_df = pd.read_csv(filestuff, sep=separator, low_memory=False, keep_default_na=False)
         # source_df = source_df.head(6000)
 
         newsflash("Getting source terms ...")
@@ -152,7 +153,7 @@ def map_iris(iri_dict, target_ontologies, threshold, use_paxo, oxo_inner_url, qu
     return None
 
 
-def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format):
+def augment(panda_input, iri_map, table_layout, colno, keep_original, iri_format):
     colname = panda_input.columns[colno]
     prev_colname = panda_input.columns[colno - 1]
     next_colname = panda_input.columns[colno + 1]
@@ -163,7 +164,7 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
     in_tuple_counter = 0
     # out_tuple_counter = 0
     out_dict_list = []
-    if table_format in {'uni-column', 'multi-column'}:
+    if table_layout in {'uni-column', 'multi-column'}:
         extra_col_dict_list = []
     tt0 = time.time()
     tt1 = tt0
@@ -174,7 +175,7 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
         source_string = in_supple[colno]
         source_terms = source_string.split(", ")
         target_groups = {}
-        if table_format == 'in-situ' and keep_original:
+        if table_layout == 'in-situ' and keep_original:
             """ Key '00source00' is lazy, collational way of placing source terms at top of list, where we want them """
             target_groups.setdefault('00source00', source_terms )
         for source_term in source_terms:
@@ -194,40 +195,40 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
 
         # out_dict_list = []
 
-        if table_format in {'in-situ', 'uni-row', 'uni-column'}:
+        if table_layout in {'in-situ', 'uni-row', 'uni-column'}:
             target_string = ', '.join(tg_series.values)
             # newsflash("Additions to %s from MeSH: %s" % (source_string, target_string))
             # newsflash()
 
-        if table_format in {'in-situ', 'uni-row', 'multi-row'}:
+        if table_layout in {'in-situ', 'uni-row', 'multi-row'}:
             out_dict = dict(zip(out_columns, in_supple))
             # newsflash(out_dict)
 
-            if table_format == 'in-situ' or keep_original:
+            if table_layout == 'in-situ' or keep_original:
                 if len(tg_series) > 0 or keep_original:
-                    if table_format == 'in-situ':
+                    if table_layout == 'in-situ':
                         out_dict[colname] = target_string
                     out_dict_list.append(out_dict)
 
-            if table_format == 'uni-row' and len(tg_series) > 0:
+            if table_layout == 'uni-row' and len(tg_series) > 0:
                 out_dict_extra = dict(out_dict)
                 out_dict_extra[colname] = target_string
                 out_dict_list.append(out_dict_extra)
 
-            elif table_format == 'multi-row':
+            elif table_layout == 'multi-row':
                 for hit in tg_series.values:
                     out_dict_iter = dict(out_dict)
                     out_dict_iter[colname] = hit
                     out_dict_list.append(out_dict_iter)
 
-        elif table_format in {'uni-column', 'multi-column'} and (len(tg_series) > 0 or keep_original):
+        elif table_layout in {'uni-column', 'multi-column'} and (len(tg_series) > 0 or keep_original):
             """ Now need to handle uni- and multi-column outputs """
             out_dict = dict(zip(out_columns, in_supple))
             out_dict_list.append(out_dict)
             extra_col_dict = {}
-            if table_format == 'multi-column':
+            if table_layout == 'multi-column':
                 extra_col_dict = dict(tg_series)
-            elif table_format == 'uni-column':
+            elif table_layout == 'uni-column':
                 # extra_col_dict = dict({'all_ontologies', ', '.join(tg_series.values)})
                 extra_col_dict = dict({colname: target_string})
             extra_col_dict_list.append(extra_col_dict)
@@ -241,23 +242,24 @@ def augment(panda_input, iri_map, table_format, colno, keep_original, iri_format
 
     newsflash("No. of records in output spreadsheet is %d" % len(out_dict_list))
     panda_output = pd.DataFrame(out_dict_list, columns=out_columns)
-    if table_format in {'uni-column', 'multi-column'}:
+    if table_layout in {'uni-column', 'multi-column'}:
         newsflash("Adding new columns ...")
         extra_columns_df = pd.DataFrame(extra_col_dict_list,
-                                        columns=[colname] if table_format == 'uni-column' else tg_series.keys())
+                                        columns=[colname] if table_layout == 'uni-column' else tg_series.keys())
         panda_output = pd.concat([panda_output.loc[:, :colname if keep_original else prev_colname], extra_columns_df,
                                   panda_output.loc[:, next_colname:]], axis=1)
 
     return panda_output
 
 
-def re_ontologise(input, output, format, column_index, keep, target, uri_format, boundary, paxo, oxo_url, quantity, verbose):
+def re_ontologise(input, output, layout, file_format, column_index, keep, target, uri_format, boundary, paxo, oxo_url, quantity, verbose):
 
     target = sorted(target)
     newsflash("Length of target ontology array is %d" % len(target))
     for t in target:
         newsflash("Target is %s" % t)
-    ss_dict = parse_ss(input, column_index)
+    field_separator = ',' if file_format == 'csv' else '\t'
+    ss_dict = parse_ss(input, field_separator, column_index)
     iri_map = ss_dict['unique_iris']
     """ Print out list of source iris in iri_map """
     # iri_counter = 0
@@ -269,7 +271,7 @@ def re_ontologise(input, output, format, column_index, keep, target, uri_format,
     newsflash("Calling map_iris with url = '%s' ..." % oxo_url)
     map_iris(iri_map, target, boundary, paxo, oxo_url, quantity, verbose)
     newsflash("Calling augment ...")
-    gwas_enriched = augment(panda_original, iri_map, format, column_index, keep, uri_format)
+    gwas_enriched = augment(panda_original, iri_map, layout, column_index, keep, uri_format)
     """ Print out augmented_panda here ... """
     newsflash("No. of dictionary elements: %d" % len(ss_dict))
     newsflash("No. of rows in spreadsheet: %d" % len(panda_original))
@@ -285,7 +287,7 @@ def re_ontologise(input, output, format, column_index, keep, target, uri_format,
     # newsflash(ss_dict['unique_iris'])
     newsflash("Outputting enriched GWAS spreadsheet ...")
     # print(gwas_enriched.head(30).to_csv(index=False, sep='\t'))
-    print(gwas_enriched.to_csv(index=False, sep='\t'))
+    print(gwas_enriched.to_csv(index=False, sep=field_separator))
 
 
 def main():
@@ -304,8 +306,9 @@ def main():
     parser2 = argparse.ArgumentParser(description='Type of URI to output, etc.', parents=[parser1])
     parser2.add_argument('-i', '--input', default=ontoconfig.get('Params', 'gwas_spreadsheet'))
     parser2.add_argument('-o', '--output', default='')
-    parser2.add_argument('-f', '--format', default='multi-column',
-                        choices=['in-situ', 'uni-column', 'multi-column', 'uni-row', 'multi-row'])
+    parser2.add_argument('-f', '--file-format', default='tsv', choices=['csv', 'tsv'])
+    parser2.add_argument('-l', '--layout', default='multi-column',
+                         choices=['in-situ', 'uni-column', 'multi-column', 'uni-row', 'multi-row'])
     parser2.add_argument('-c', '--column-index', type=int, default=35)
     kmeg = parser2.add_mutually_exclusive_group(required=False)
     kmeg.add_argument('-k', '--keep', dest='keep', action='store_true')
