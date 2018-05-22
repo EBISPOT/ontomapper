@@ -291,33 +291,34 @@ def re_ontologise(input, output, format, column_index, keep, target, uri_format,
 def main():
 
     """ First of all, check configuration file """
-    parser = argparse.ArgumentParser(description='Type of URI to output, etc.')
-    parser.add_argument('-g', '--config', default='./ontomapper.ini')
+    parser1 = argparse.ArgumentParser(description='Config filepath', add_help=False)
+    parser1.add_argument('-g', '--config', default='./ontomapper.ini')
 
     """ Second of all, get configuration info from configuration file """
     ontoconfig = configparser.ConfigParser(os.environ)
     ontoconfig.optionxform = str
-    namespace, extra = parser.parse_known_args()
+    namespace, extra = parser1.parse_known_args()
     ontoconfig.read(namespace.config)
 
     """ Third of all, parse the rest of the switches, possibly using defaults from configuration file """
-    parser.add_argument('-i', '--input', default=ontoconfig.get('Params', 'gwas_spreadsheet'))
-    parser.add_argument('-o', '--output', default='')
-    parser.add_argument('-f', '--format', default='multi-column',
+    parser2 = argparse.ArgumentParser(description='Type of URI to output, etc.', parents=[parser1])
+    parser2.add_argument('-i', '--input', default=ontoconfig.get('Params', 'gwas_spreadsheet'))
+    parser2.add_argument('-o', '--output', default='')
+    parser2.add_argument('-f', '--format', default='multi-column',
                         choices=['in-situ', 'uni-column', 'multi-column', 'uni-row', 'multi-row'])
-    parser.add_argument('-c', '--column-index', type=int, default=35)
-    kmeg = parser.add_mutually_exclusive_group(required=False)
+    parser2.add_argument('-c', '--column-index', type=int, default=35)
+    kmeg = parser2.add_mutually_exclusive_group(required=False)
     kmeg.add_argument('-k', '--keep', dest='keep', action='store_true')
     kmeg.add_argument('-d', '--no-keep', dest='keep', action='store_false')
-    parser.set_defaults(keep=True)
-    parser.add_argument('-t', '--target', default=['mesh'], nargs='+')
-    parser.add_argument('-u', '--uri-format', default='long')
-    parser.add_argument('-b', '--boundary', type=int, default=100)
-    parser.add_argument('-x', '--oxo_url', default=ontoconfig.get('Params', 'oxo_url'))
-    parser.add_argument('-p', '--paxo', type=bool, nargs='?', const=True, default=False)
-    parser.add_argument('-q', '--quantity', type=int, default=ontoconfig.getint('Params', 'api_record_quantity'))
-    parser.add_argument('-v', '--verbose', type=bool, nargs='?', const=True, default=False)
-    args = parser.parse_args()
+    parser2.set_defaults(keep=True)
+    parser2.add_argument('-t', '--target', default=['mesh'], nargs='+')
+    parser2.add_argument('-u', '--uri-format', default='long')
+    parser2.add_argument('-b', '--boundary', type=int, default=100)
+    parser2.add_argument('-x', '--oxo_url', default=ontoconfig.get('Params', 'oxo_url'))
+    parser2.add_argument('-p', '--paxo', type=bool, nargs='?', const=True, default=False)
+    parser2.add_argument('-q', '--quantity', type=int, default=ontoconfig.getint('Params', 'api_record_quantity'))
+    parser2.add_argument('-v', '--verbose', type=bool, nargs='?', const=True, default=False)
+    args = parser2.parse_args()
 
     """ vars returns a dictionary from the Namespace object; """
     arg_dict = vars(args)
