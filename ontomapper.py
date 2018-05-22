@@ -294,7 +294,7 @@ def main():
 
     """ First of all, check configuration file """
     parser1 = argparse.ArgumentParser(description='Config filepath', add_help=False)
-    parser1.add_argument('-g', '--config', default='./ontomapper.ini')
+    parser1.add_argument('-g', '--config', default='./ontomapper.ini', help='filepath of config file (ini format)')
 
     """ Second of all, get configuration info from configuration file """
     ontoconfig = configparser.ConfigParser(os.environ)
@@ -304,23 +304,37 @@ def main():
 
     """ Third of all, parse the rest of the switches, possibly using defaults from configuration file """
     parser2 = argparse.ArgumentParser(description='Type of URI to output, etc.', parents=[parser1])
-    parser2.add_argument('-i', '--input', default=ontoconfig.get('Params', 'gwas_spreadsheet'))
-    parser2.add_argument('-o', '--output', default='')
-    parser2.add_argument('-f', '--file-format', default='tsv', choices=['csv', 'tsv'])
+    parser2.add_argument('-i', '--input', default=ontoconfig.get('Params', 'gwas_spreadsheet'),
+                         help='location of input spreadsheet: accepts filepath or URL')
+    parser2.add_argument('-o', '--output', default='', help='output spreadsheet filepath **NO CURRENT EFFECT**')
+    parser2.add_argument('-f', '--file-format', default='tsv', choices=['csv', 'tsv'],
+                         help='file format (both input and output)')
     parser2.add_argument('-l', '--layout', default='multi-column',
-                         choices=['in-situ', 'uni-column', 'multi-column', 'uni-row', 'multi-row'])
-    parser2.add_argument('-c', '--column-index', type=int, default=35)
+                         choices=['in-situ', 'uni-column', 'multi-column', 'uni-row', 'multi-row'],
+                         help="%s%s" % ('whether new ontology terms are required in multiple rows, ',
+                                        'multiple columns, a single row, a single column, or the originating cell'))
+    parser2.add_argument('-c', '--column-index', type=int, default=35,
+                         help='zero-based index of column containing source ontology terms')
     kmeg = parser2.add_mutually_exclusive_group(required=False)
-    kmeg.add_argument('-k', '--keep', dest='keep', action='store_true')
-    kmeg.add_argument('-d', '--no-keep', dest='keep', action='store_false')
+    kmeg.add_argument('-k', '--keep', dest='keep', action='store_true', help='retain source ontology terms')
+    kmeg.add_argument('-d', '--no-keep', dest='keep', action='store_false', help='ditch source ontology terms')
     parser2.set_defaults(keep=True)
-    parser2.add_argument('-t', '--target', default=['mesh'], nargs='+')
-    parser2.add_argument('-u', '--uri-format', default='long')
-    parser2.add_argument('-b', '--boundary', type=int, default=100)
-    parser2.add_argument('-x', '--oxo_url', default=ontoconfig.get('Params', 'oxo_url'))
-    parser2.add_argument('-p', '--paxo', type=bool, nargs='?', const=True, default=False)
-    parser2.add_argument('-q', '--quantity', type=int, default=ontoconfig.getint('Params', 'api_record_quantity'))
-    parser2.add_argument('-v', '--verbose', type=bool, nargs='?', const=True, default=False)
+    parser2.add_argument('-t', '--target', default=['mesh'], nargs='+',
+                         help='space-separated list of target ontology prefixes')
+    parser2.add_argument('-u', '--uri-format', default='long', choices=['long', 'short', 'curie'],
+                         help='format of target ontology term identifiers **NO CURRENT EFFECT**')
+    parser2.add_argument('-b', '--boundary', type=int, default=100,
+                         help="%s%s" % ('minimum percentage confidence threshold of target ontology term matches ',
+                                        '**NO CURRENT EFFECT: ENFORCE 100%% CONFIDENCE (OxO distance=1)**'))
+    parser2.add_argument('-x', '--oxo_url', default=ontoconfig.get('Params', 'oxo_url'),
+                         help='OxO (or Paxo) web service URL')
+    parser2.add_argument('-p', '--paxo', type=bool, nargs='?', const=True, default=False,
+                         help='Use Paxo web service rather than OxO **NO CURRENT EFFECT**')
+    parser2.add_argument('-q', '--quantity', type=int, default=ontoconfig.getint('Params', 'api_record_quantity'),
+                         help='number of query terms to chunk, per HTTP request on the OxO web service')
+    parser2.add_argument('-v', '--verbose', type=bool, nargs='?', const=True, default=False,
+                         help="%s%s" % ('whether to send extremely detailed progess reports to standard error: ',
+                                        'not recommended for regular use'))
     args = parser2.parse_args()
 
     """ vars returns a dictionary from the Namespace object; """
