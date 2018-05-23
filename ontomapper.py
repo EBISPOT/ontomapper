@@ -252,7 +252,8 @@ def augment(panda_input, iri_map, table_layout, colno, keep_original, iri_format
     return panda_output
 
 
-def re_ontologise(input, output, layout, file_format, column_index, keep, target, uri_format, boundary, paxo, oxo_url, quantity, verbose):
+def re_ontologise(input, output, layout, file_format, column_index, keep, target, uri_format, boundary, paxo, oxo_url,
+                  quantity, verbose):
 
     target = sorted(target)
     newsflash("Length of target ontology array is %d" % len(target))
@@ -301,32 +302,37 @@ def main():
     ontoconfig.optionxform = str
     namespace, extra = parser1.parse_known_args()
     ontoconfig.read(namespace.config)
+    targets_plus = ontoconfig.items('Targets')
+    spurious_targets = ontoconfig.items('DEFAULT')
+    real_targets = dict(set(targets_plus) - set(spurious_targets))
+    newsflash(pd.Series(real_targets))
 
     """ Third of all, parse the rest of the switches, possibly using defaults from configuration file """
     parser2 = argparse.ArgumentParser(description='Type of URI to output, etc.', parents=[parser1])
     parser2.add_argument('-i', '--input', default=ontoconfig.get('Params', 'gwas_spreadsheet'),
                          help='location of input spreadsheet: accepts filepath or URL')
-    parser2.add_argument('-o', '--output', default='', help='output spreadsheet filepath **NO CURRENT EFFECT**')
-    parser2.add_argument('-f', '--file-format', default='tsv', choices=['csv', 'tsv'],
+    parser2.add_argument('-o', '--output', help='output spreadsheet filepath **NO CURRENT EFFECT**')
+    parser2.add_argument('-f', '--file-format', choices=['csv', 'tsv'], default=ontoconfig.get('Params', 'file_format'),
                          help='file format (both input and output)')
-    parser2.add_argument('-l', '--layout', default='multi-column',
-                         choices=['in-situ', 'uni-column', 'multi-column', 'uni-row', 'multi-row'],
+    parser2.add_argument('-l', '--layout', choices=['in-situ', 'uni-column', 'multi-column', 'uni-row', 'multi-row'],
+                         default=ontoconfig.get('Params', 'layout'),
                          help="%s%s" % ('whether new ontology terms are required in multiple rows, ',
                                         'multiple columns, a single row, a single column, or the originating cell'))
-    parser2.add_argument('-c', '--column-index', type=int, default=35,
+    parser2.add_argument('-c', '--column-index', type=int, default=ontoconfig.get('Params', 'column_index'),
                          help='zero-based index of column containing source ontology terms')
     kmeg = parser2.add_mutually_exclusive_group(required=False)
     kmeg.add_argument('-k', '--keep', dest='keep', action='store_true', help='retain source ontology terms')
     kmeg.add_argument('-d', '--no-keep', dest='keep', action='store_false', help='ditch source ontology terms')
     parser2.set_defaults(keep=True)
-    parser2.add_argument('-t', '--target', default=['mesh'], nargs='+',
+    # parser2.add_argument('-t', '--target', default=['mesh'], nargs='+',
+    parser2.add_argument('-t', '--target', nargs='+', default=list(real_targets.values()),
                          help='space-separated list of target ontology prefixes')
-    parser2.add_argument('-u', '--uri-format', default='long', choices=['long', 'short', 'curie'],
+    parser2.add_argument('-u', '--uri-format', choices=['long', 'short', 'curie'],
                          help='format of target ontology term identifiers **NO CURRENT EFFECT**')
     parser2.add_argument('-b', '--boundary', type=int, default=100,
                          help="%s%s" % ('minimum percentage confidence threshold of target ontology term matches ',
                                         '**NO CURRENT EFFECT: ENFORCE 100%% CONFIDENCE (OxO distance=1)**'))
-    parser2.add_argument('-x', '--oxo_url', default=ontoconfig.get('Params', 'oxo_url'),
+    parser2.add_argument('-x', '--oxo-url', default=ontoconfig.get('Params', 'oxo_url'),
                          help='OxO (or Paxo) web service URL')
     parser2.add_argument('-p', '--paxo', type=bool, nargs='?', const=True, default=False,
                          help='Use Paxo web service rather than OxO **NO CURRENT EFFECT**')
@@ -339,6 +345,7 @@ def main():
 
     """ vars returns a dictionary from the Namespace object; """
     arg_dict = vars(args)
+    """ config is still in arg_dict at this point """
     arg_dict.pop('config')
     newsflash(arg_dict, arg_dict['verbose'])
 
