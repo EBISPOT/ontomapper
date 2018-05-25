@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+import configparser
 
 
 def newsflash(msg=None, verbose=True):
@@ -12,6 +13,26 @@ def newsflash(msg=None, verbose=True):
         if msg is None:
             msg = ""
         sys.stderr.write("%s\n" % (msg))
+
+
+def config_or_bust(cfg_object, cfg_section):
+
+    def config_section_lookup(cfg_key, cfg_type):
+        try:
+            if cfg_type == 'string':
+                cfg_value = cfg_object.get(cfg_section, cfg_key)
+            elif cfg_type == 'int':
+                cfg_value = cfg_object.getint(cfg_section, cfg_key)
+            elif cfg_type == 'float':
+                cfg_value = cfg_object.getfloat(cfg_section, cfg_key)
+            elif cfg_type == 'boolean':
+                cfg_value = cfg_object.getboolean(cfg_section, cfg_key)
+            else:
+                raise ValueError('cfg_type should be one of: string, int, float, boolean')
+        except configparser.NoSectionError:
+            cfg_value = None
+        return cfg_value
+    return config_section_lookup
 
 
 def listify_uris(uri_string):
