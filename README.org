@@ -110,4 +110,4 @@ tab-separated-variable (spreadsheet) file:
 #+END_SRC
 
 Look at ~ontomapper.ini~ for default values of other parameters, any or all of
-which can be changed in the cofig, or overridden on the command line.
+which can be changed in the config, or overridden on the command line.
