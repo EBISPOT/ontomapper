@@ -96,7 +96,8 @@ def parse_ss(spreadsheet, separator, colno):
         2. Might want to split by comma only, then remove spaces: more robust!
         """
         newsflash("Breaking source term strings into lists ...")
-        iri_lists = source_iris.apply(lambda x: [] if x == '' else x.split(", "))
+        # iri_lists = source_iris.apply(lambda x: [] if x == '' else x.split(", "))
+        iri_lists = source_iris.apply(lambda x: [] if x == '' else list(map(lambda w: w.strip(), x.split(","))))
         """ Use nested lambdas to collect source IRIs from Series of lists """
         newsflash("Generate dictionary keyed on unique source terms ...")
         iri_lists.apply(lambda x, y: list(map(lambda z: y.update({z: None}), x)), args=[iri_map])
@@ -178,7 +179,7 @@ def augment(panda_input, iri_map, table_layout, colno, keep_original, iri_format
         in_supple = tuple(in_tuple[1:])
         # source_string = in_tuple[colname]
         source_string = in_supple[colno]
-        source_terms = source_string.split(", ")
+        source_terms = list(map(lambda x: x.strip(), source_string.split(",")))
         target_groups = {}
         if table_layout == 'in-situ' and keep_original:
             """ Key '00source00' is lazy, collational way of placing source terms at top of list, where we want them """
