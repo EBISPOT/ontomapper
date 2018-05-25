@@ -93,7 +93,7 @@ def parse_ss(spreadsheet, separator, colno):
         # iri_lists = source_iris.apply(lambda x: x.split(", "))
         """
         1. Return empty array if empty string.
-        2. Might want to split by comma only, then remove spaces: more robust!
+        2. Split by comma only, then remove spaces afterwards: more robust!
         """
         newsflash("Breaking source term strings into lists ...")
         # iri_lists = source_iris.apply(lambda x: [] if x == '' else x.split(", "))
@@ -281,7 +281,7 @@ def re_ontologise(input_file, output, layout, file_format, column_index, keep, t
     newsflash("Calling map_iris with url = '%s' ..." % oxo_url)
     map_iris(iri_map, target, boundary, paxo, oxo_url, number, verbose)
     newsflash("Calling augment ...")
-    gwas_enriched = augment(panda_original, iri_map, layout, column_index, keep, uri_format)
+    ontologically_enriched = augment(panda_original, iri_map, layout, column_index, keep, uri_format)
     """ Print out augmented_panda here ... """
     # newsflash("No. of dictionary elements: %d" % len(ss_dict))
     # newsflash("No. of rows in spreadsheet: %d" % len(panda_original))
@@ -295,9 +295,9 @@ def re_ontologise(input_file, output, layout, file_format, column_index, keep, t
     # for iri_key in ss_dict['unique_iris']:
     #     newsflash(iri_key)
     # newsflash(ss_dict['unique_iris'])
-    newsflash("Outputting enriched GWAS spreadsheet ...")
-    # print(gwas_enriched.head(30).to_csv(index=False, sep='\t'))
-    print(gwas_enriched.to_csv(index=False, sep=field_separator))
+    newsflash("Outputting ontologically enriched spreadsheet ...")
+    # print(ontologically_enriched.head(30).to_csv(index=False, sep='\t'))
+    print(ontologically_enriched.to_csv(index=False, sep=field_separator))
 
 
 def main():
@@ -323,7 +323,7 @@ def main():
     """ Third of all, parse the rest of the switches, possibly using defaults from configuration file """
     parser2 = argparse.ArgumentParser(prog='Ontomapper', description='Type of URI to output, etc.', parents=[parser1])
     cfg_sect_lookup = config_or_bust(ontoconfig, 'Params')
-    parser2.add_argument('-i', '--input-file', default=cfg_sect_lookup('gwas_spreadsheet', 'string'),
+    parser2.add_argument('-i', '--input-file', default=cfg_sect_lookup('input_file', 'string'),
                          help='location of input spreadsheet: accepts filepath or URL')
     parser2.add_argument('-o', '--output', default=cfg_sect_lookup('output', 'string'),
                          help='output spreadsheet filepath **NO CURRENT EFFECT**')
@@ -365,6 +365,12 @@ def main():
     parser2.set_defaults(keep=cfg_sect_lookup('keep', 'boolean'), paxo=cfg_sect_lookup('paxo', 'boolean'),
                          verbose=cfg_sect_lookup('verbose', 'boolean'))
     parser2.add_argument('--version', action='version', version='%(prog)s 1.0')
+
+    if len(sys.argv) < 2:
+        parser2.print_help(sys.stderr)
+        newsflash()
+        sys.exit(0)
+
     args = parser2.parse_args()
 
     """ vars returns a dictionary from the Namespace object; """
