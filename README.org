@@ -50,15 +50,15 @@ will cause the program to abort. Informational progress reports get printed to
 standard error (usually the console).
 
 There are several switches available: most have a default value set, either in
-the executable itself, or the config file, ~ontomapper.ini~; all switches have
-one-letter shortcuts too, which you can see in the program help menu (just try
-to run the program without any switches---or just ~--help~ on its own---to view
-this). The currently active options, that you may wish to specify explicitly,
-and do not have to place in any particular order, are as follows (all of these
-have default values too, which you may opt to leave unchanged---just remember to
-specify a config file on the command line):
+the executable itself, or in the config file, ~ontomapper.ini~; all switches
+have one-letter shortcuts too, which you can see in the program help menu (just
+try to run the program without any switches---or just ~--help~ on its own---to
+view this). The currently active options, that you may wish to specify
+explicitly, and do not have to place in any particular order, are as follows
+(all of these have default values too, which you may opt to leave
+unchanged---just remember to specify a config file on the command line):
 
-1. ~--config ontomapper.ini~ config file in ~.ini~
+1. ~--config ontomapper.ini~ /(default config, provided)/: config file in ~.ini~
    format, containing default values for other switches;
 2. ~--input-file ./gwas_subset.tsv~ /(example file, yet to be provided)/:
    filepath or URL specifying location of input spreadsheet, one column of which
