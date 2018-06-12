@@ -236,7 +236,7 @@ def augment(panda_input, iri_map, table_layout, colno, keep_original, iri_format
                 extra_col_dict = dict(tg_series)
             elif table_layout == 'uni-column':
                 # extra_col_dict = dict({'all_ontologies', ', '.join(tg_series.values)})
-                extra_col_dict = dict({colname: target_string})
+                extra_col_dict = dict({'EQUIVALENT_TRAIT_URIS': target_string})
             extra_col_dict_list.append(extra_col_dict)
 
         in_tuple_counter += 1
@@ -253,8 +253,10 @@ def augment(panda_input, iri_map, table_layout, colno, keep_original, iri_format
     panda_output = pd.DataFrame(out_dict_list, columns=out_columns)
     if table_layout in {'uni-column', 'multi-column'}:
         newsflash("Adding new columns ...")
-        extra_columns_df = pd.DataFrame(extra_col_dict_list,
-                                        columns=[colname] if table_layout == 'uni-column' else tg_series.keys())
+        # tg_series out of scope here!
+        # extra_columns_df = pd.DataFrame(extra_col_dict_list,
+        #                                 columns=[colname] if table_layout == 'uni-column' else tg_series.keys())
+        extra_columns_df = pd.DataFrame(extra_col_dict_list)
         panda_output = pd.concat([panda_output.loc[:, :colname if keep_original else prev_colname], extra_columns_df,
                                   panda_output.loc[:, next_colname:]], axis=1)
 
