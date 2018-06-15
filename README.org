@@ -77,7 +77,7 @@ unchanged---just remember to specify a config file on the command line):
    | ~uni‑column~   | Add an extra column to accommodate new ontology terms---all new terms, from any ontology in the target list, appear in the same cell.                                                                                                               |
    | ~multi‑column~ | Add one new extra column per target ontology---terms from each target ontology appear together in a dedicated, newly-generated column.                                                                                                              |
 
-5. ~--column-index~: 0-based integer index of column containing souce ontology
+5. ~--column-index~: zero-based int index of column containing souce ontology
    terms (mutually excludes ~column-name~);
 6. ~--column-name~: title or header of column containing source ontology terms
    (mutually excludes ~column-index~);
