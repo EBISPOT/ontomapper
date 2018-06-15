@@ -402,7 +402,7 @@ def main():
     """ config is still in arg_dict at this point """
     arg_dict.pop('config')
 
-    """ Don't check values of reserved options, which have no effect at the moment """
+    """ Don't check values of reserved options, which have no effect at the moment; also, column_index may be null """
     active_arg_dict = arg_dict.copy()
     for inactive_arg in ['output', 'paxo', 'uri_format', 'boundary', 'column_index']:
         active_arg_dict.pop(inactive_arg)

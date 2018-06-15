@@ -77,29 +77,31 @@ unchanged---just remember to specify a config file on the command line):
    | ~uni‑column~   | Add an extra column to accommodate new ontology terms---all new terms, from any ontology in the target list, appear in the same cell.                                                                                                               |
    | ~multi‑column~ | Add one new extra column per target ontology---terms from each target ontology appear together in a dedicated, newly-generated column.                                                                                                              |
 
-5. ~--column-index~: zero-based integer index of the column containing souce
+5. ~--column-index~: zero-based integer index of column containing souce
    ontology terms;
-6. ~--keep~ | ~--no-keep~: whether to retain the original EFO terms in the
+6. ~--column-name~: title or header of column containing source ontology terms
+   (mutually exclusive with respect to ~column-index~);
+7. ~--keep~ | ~--no-keep~: whether to retain the original EFO terms in the
    output spreadsheet---choosing ~--no-keep~ can mean dropping the original row,
    dropping the original column, or both, depending the value of the ~--format~
    switch and whether the EFO terms are mappable or not;
-7. ~--target ncit mesh doid~ /(example list)/: new ontology, or ontologies, to
+8. ~--target ncit mesh doid~ /(example list)/: new ontology, or ontologies, to
    include in the output spreadsheet---supply the switch itself once only,
    followed by a single ontology or a space-separated list;
-8. ~--oxo-url~: URL of the OxO web service---internal EMBL/EBI users may
+9. ~--oxo-url~: URL of the OxO web service---internal EMBL/EBI users may
    sometimes wish to use a development server, for example;
-9. ~--number~: HTTP requests involving large numbers of query terms should be
-   chunked---specifies maximum number of individual query terms per request;
-10. ~--verbose~ | ~--quiet~: whether to print a flood of program progress data
+10. ~--number~: HTTP requests involving large numbers of query terms should be
+    chunked---specifies maximum number of individual query terms per request;
+11. ~--verbose~ | ~--quiet~: whether to print a flood of program progress data
     and reports, or keep it simple;
-11. ~--version~: show program's version number and exit.
+12. ~--version~: show program's version number and exit.
 
 Remember that single-letter shortcuts for all the above switches are available
 from the program help menu.
 
 The other significant script here is ~spreadsheet_sampler.py~: this can be used
 to generate a subset of records and fields from a master spreadsheet, like the
-public-domain GWAS spreadsheet; this enables easy experimentation with
+[[https://www.ebi.ac.uk/gwas/api/search/downloads/alternative][public-domain GWAS spreadsheet]]; this enables easy experimentation with
 ~ontomapper.py~ itself, using the smaller genenerated spreadsheet as input. An
 example of such a smaller generated spreadsheet is provided here in the form of
 ~gwas_subset.tsv~, so it should not be strictly necessary to run
