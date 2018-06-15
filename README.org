@@ -78,9 +78,9 @@ unchanged---just remember to specify a config file on the command line):
    | ~multi‑column~ | Add one new extra column per target ontology---terms from each target ontology appear together in a dedicated, newly-generated column.                                                                                                              |
 
 5. ~--column-index~: zero-based integer index of column containing souce
-   ontology terms;
+   ontology terms (mutually excludes ~column-name~);
 6. ~--column-name~: title or header of column containing source ontology terms
-   (mutually exclusive with respect to ~column-index~);
+   (mutually excludes ~column-index~);
 7. ~--keep~ | ~--no-keep~: whether to retain the original EFO terms in the
    output spreadsheet---choosing ~--no-keep~ can mean dropping the original row,
    dropping the original column, or both, depending the value of the ~--format~
