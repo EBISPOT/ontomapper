@@ -109,7 +109,7 @@ example of such a smaller generated spreadsheet is provided here in the form of
 own help system; this can be viewed by invoking ~spreadsheet_sampler.py~ without
 any parameters or switches.
 
-*** Example
+*** Examples
 
 To obtain equivalent terms from both MeSH and the Disease Ontology, using the
 public web service, reserving a new column for each new ontology and dispensing
