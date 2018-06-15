@@ -65,12 +65,12 @@ __FUNCTIONS__
 """
 
 
-def parse_ss(spreadsheet, separator, colno):
+def parse_ss(spreadsheet, separator, column_dict):
     ss_dict = {}
     iri_map = {}
     try:
         # newsflash("Spreadsheet location is %s" % spreadsheet)
-        # newsflash("Column index is %d" % colno)
+        # newsflash("Column index is %d" % column_dict['index'])
 
         url_bool = re.compile('[a-zA-Z](\w|[-+.])*://.*')
         # filestuff = None
@@ -86,7 +86,11 @@ def parse_ss(spreadsheet, separator, colno):
 
         newsflash("Pandafying spreadsheet ...")
         source_df = pd.read_csv(filestuff, sep=separator, low_memory=False, keep_default_na=False)
-        # source_df = source_df.head(6000)
+        if column_dict['index'] is None:
+            column_dict['index'] = source_df.columns.get_loc(column_dict['name'])
+        else:
+            column_dict['name'] = source_df.columns[column_dict['index']]
+        colno = column_dict['index']
 
         newsflash("Getting source terms ...")
         source_iris = source_df.iloc[:, colno]
@@ -263,15 +267,18 @@ def augment(panda_input, iri_map, table_layout, colno, keep_original, iri_format
     return panda_output
 
 
-def re_ontologise(input_file, output, layout, file_format, column_index, keep, target, uri_format, boundary, paxo, oxo_url,
-                  number, verbose):
+def re_ontologise(input_file, output, layout, file_format, column_index, column_name, keep, target, uri_format,
+                  boundary, paxo, oxo_url, number, verbose):
 
     target = sorted(target)
     # newsflash("Length of target ontology array is %d" % len(target))
     # for t in target:
     #     newsflash("Target is %s" % t)
     field_separator = ',' if file_format == 'csv' else '\t'
-    ss_dict = parse_ss(input_file, field_separator, column_index)
+    ss_column = {'index': column_index, 'name': column_name}
+    ss_dict = parse_ss(input_file, field_separator, ss_column)
+    column_index = ss_column['index']
+    column_name = ss_column['name']
     iri_map = ss_dict['unique_iris']
     """ Print out list of source iris in iri_map """
     # iri_counter = 0
@@ -323,7 +330,12 @@ def main():
         target_list = list(real_targets.values())
 
     """ Third of all, parse the rest of the switches, possibly using defaults from configuration file """
-    parser2 = argparse.ArgumentParser(prog='Ontomapper', description='Type of URI to output, etc.', parents=[parser1])
+    parser2 = argparse.ArgumentParser(prog='Ontomapper',
+                                      description="%s%s%s" %
+                                                  ('Takes source ontology (e.g. EFO) terms from an input spreadsheet, ',
+                                                   'and generates an output spreadsheet with equivalent terms from ',
+                                                   'another ontology or ontologies.'),
+                                      parents=[parser1])
     cfg_sect_lookup = config_or_bust(ontoconfig, 'Params')
     parser2.add_argument('-i', '--input-file', default=cfg_sect_lookup('input_file', 'string'),
                          help='location of input spreadsheet: accepts filepath or URL')
@@ -336,8 +348,11 @@ def main():
                          default=cfg_sect_lookup('layout', 'string'),
                          help="%s%s" % ('whether new ontology terms are required in multiple rows, ',
                                         'multiple columns, a single row, a single column, or the originating cell'))
-    parser2.add_argument('-c', '--column-index', type=int, default=cfg_sect_lookup('column_index', 'int'),
-                         help='zero-based index of column containing source ontology terms')
+    cmeg = parser2.add_mutually_exclusive_group(required=False)
+    cmeg.add_argument('-x', '--column-index', type=int,  # default=cfg_sect_lookup('column_index', 'int'),
+                      help='zero-based index of column containing source ontology terms')
+    cmeg.add_argument('-c', '--column-name', default=cfg_sect_lookup('column_name', 'string'),
+                      help='name or heading of column containing source ontology terms')
     kmeg = parser2.add_mutually_exclusive_group(required=False)
     kmeg.add_argument('-k', '--keep', dest='keep', action='store_true', help='retain source ontology terms')
     kmeg.add_argument('-d', '--no-keep', dest='keep', action='store_false', help='ditch source ontology terms')
@@ -356,7 +371,7 @@ def main():
     #                      help='Use Paxo web service rather than OxO **NO CURRENT EFFECT**')
     pmeg = parser2.add_mutually_exclusive_group(required=False)
     pmeg.add_argument('-p', '--paxo', dest='paxo', action='store_true', help='use Paxo rather than OxO')
-    pmeg.add_argument('-x', '--no-paxo', dest='paxo', action='store_false', help='do not use Paxo: use OxO')
+    pmeg.add_argument('-z', '--no-paxo', dest='paxo', action='store_false', help='do not use Paxo: use OxO')
     parser2.add_argument('-n', '--number', type=int, default=cfg_sect_lookup('query_term_number', 'int'),
                          help='number of query terms to chunk, per HTTP request on the OxO web service')
     vmeg = parser2.add_mutually_exclusive_group(required=False)
@@ -389,7 +404,7 @@ def main():
 
     """ Don't check values of reserved options, which have no effect at the moment """
     active_arg_dict = arg_dict.copy()
-    for inactive_arg in ['output', 'paxo', 'uri_format', 'boundary']:
+    for inactive_arg in ['output', 'paxo', 'uri_format', 'boundary', 'column_index']:
         active_arg_dict.pop(inactive_arg)
     if None in active_arg_dict.values():
         newsflash()

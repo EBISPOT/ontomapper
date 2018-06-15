@@ -97,6 +97,16 @@ unchanged---just remember to specify a config file on the command line):
 Remember that single-letter shortcuts for all the above switches are available
 from the program help menu.
 
+The other significant script here is ~spreadsheet_sampler.py~: this can be used
+to generate a subset of records and fields from a master spreadsheet, like the
+public-domain GWAS spreadsheet; this enables easy experimentation with
+~ontomapper.py~ itself, using the smaller genenerated spreadsheet as input. An
+example of such a smaller generated spreadsheet is provided here in the form of
+~gwas_subset.tsv~, so it should not be strictly necessary to run
+~spreadsheet_sampler.py~ at all. If you do wish to run it however, it has its
+own help system; this can be viewed by invoking ~spreadsheet_sampler.py~ without
+any parameters or switches.
+
 *** Example
 
 To obtain equivalent terms from both MeSH and the Disease Ontology, using the
@@ -106,7 +116,14 @@ have 'execute' privilege on ~ontomapper.py~), redirecting output to a new
 tab-separated-variable (spreadsheet) file:
 
 #+BEGIN_SRC sh
-  $ ./ontomapper.py --config ontomapper.ini --target mesh doid --format multi-column --no-keep > gwas_new.tsv
+  $ ./ontomapper.py --config ontomapper.ini --target mesh doid --layout multi-column --no-keep > gwas_new.tsv
+#+END_SRC
+
+Or to do something equivalent, taking as input the provided GWAS spreadsheet
+subset sample, and this time using one-character switch shortcuts:
+
+#+BEGIN_SRC sh
+  $ ./ontomapper.py -g ontomapper.ini -i gwas_subset.tsv -t mesh doid -l multi-column -d > gwas_new_subset.tsv
 #+END_SRC
 
 Look at ~ontomapper.ini~ for default values of other parameters, any or all of

@@ -3,6 +3,7 @@ venv/
 .idea/
 *.csv
 *.tsv
+!gwas_subset.tsv
 *.lis
 *.ebispot
 *.odt
