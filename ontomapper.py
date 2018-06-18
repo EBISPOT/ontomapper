@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 
 import argparse
-# import csv
 import io
 import json
-# from configparser import ConfigParser
 import configparser
 import os
 import pandas as pd
 import re
 import requests
-# import spotilities as spot
 from spotilities import newsflash
 from spotilities import config_or_bust
 import sys
@@ -20,28 +17,27 @@ import time
 """
 __PARAMETERS__ (to main program: all non-positional key/value pairs, to be initialised with default values):
 
-    1. input-file    : URL or filename; default = online GWAS spreadsheet
-    2. output        : filename; default = standard output
-    3. layout        : layout of new entries in output spreadsheet: 'in-situ', 'uni-column', 'multi-column', 'uni-row'
-                       or 'multi-row'; default = 'multi-column'
-    4. file-format   : input / output spreadsheet file format: 'csv' or 'tsv'; default = 'tsv'
-    5. column-index  : column index (starting at 0) to parse for source IRIs; default based on header search?
-    6. keep          : whether to retain column containing source IRIs in output; boolean, default = no
-    7. target        : ontolog[y|ies] to search for equivalent terms; default = MeSH
-    8. uri-format    : return format of target IRIs (curies, long form, etc.); default = long form
-    9. boundary      : boundary value (%age) for confidence level; default = 100 (OxO distance 1)
-    10. oxo_url       : URL of OxO web service; default = public OxO server
-    11. paxo         : use 'experimental' PAXO code?; boolean, default = no
-    12. config       : configuration file path
-    13. quantity     : no. of query terms to include in single API call
-    14. verbose      : do we want a bunch of large json objects dumped to standard error?; boolean, default = no
-    15. ????         : source ontology from which terms in existing spreadsheet come; default = 'EFO' --- Probably
-                       unnecessary! --- check!!
-    16. ????         : input format of source IRIs?
-    17. ????         : negation operators for the three boolean parameters? ... probably unnecessary.
-    18. ????         : column header as mutually exlusive alternative to column index? --- does this have implications
-                       for processing of the column, inside and outside pandas?
-    19. ????         : option to change format of incoming IRIs before re-output (implies --keep)
+    1. input-file      : URL or filename; default = online GWAS spreadsheet
+    2. output          : filename; default = standard output
+    3. layout          : layout of new entries in output spreadsheet: 'in-situ', 'uni-column', 'multi-column', 'uni-row'
+                         or 'multi-row'; default = 'multi-column'
+    4. file-format     : input / output spreadsheet file format: 'csv' or 'tsv'; default = 'tsv'
+    5. column-index    : column index (starting at 0) to parse for source IRIs; overrides column-name if supplied
+    6. column-name     : mutually exlusive alternative to column-index; default replaces prior column-index default
+    7. keep/no-keep    : whether to retain column containing source IRIs in output; boolean, default = no
+    8. target          : ontolog[y|ies] to search for equivalent terms; default = MeSH
+    9. uri-format      : return format of target IRIs (curies, long form, etc.); default = long form
+    10. distance       : OxO distance: 1, 2 or 3; default = 1
+    11. oxo_url        : URL of OxO web service; default = public OxO server
+    12. paxo/no-paxo   : use 'experimental' PAXO code?; boolean, default = no
+    13. config         : configuration file path
+    14. quantity       : no. of query terms to include in single API call
+    15. quiet/verbose  : do we want a bunch of large json objects dumped to standard error?; boolean, default = no
+    16. ????           : source ontology from which terms in existing spreadsheet come; default = 'EFO' --- Probably
+                         unnecessary! --- check!!
+    17. ????           : input format of source IRIs?
+    18. ????           : option to change format of incoming IRIs before re-output (implies --keep)
+    19. ????           : boundary value (%age) for confidence level, incorporating both OxO distance and Paxo metric?
 
 
 __FUNCTIONS__
@@ -119,11 +115,12 @@ def parse_ss(spreadsheet, separator, column_dict):
     return ss_dict
 
 
-def map_iris(iri_dict, target_ontologies, threshold, use_paxo, oxo_inner_url, query_size, verbose):
+def map_iris(iri_dict, target_ontologies, distance, use_paxo, oxo_inner_url, query_size, verbose):
     quantified_url = "%s?size=%d" % (oxo_inner_url, query_size)
     data = {'ids': list(iri_dict.keys()), 'mappingTarget': target_ontologies}
     json_strings = []
-    data['distance'] = '1' if threshold >= 100 else '2' if threshold >= 75 else '3' if threshold >= 50 else ''
+    # data['distance'] = '1' if threshold >= 100 else '2' if threshold >= 75 else '3' if threshold >= 50 else ''
+    data['distance'] = distance
     """ If boundary less than 50%, throw 'confidence too low' error: need to code! """
     oxo_hit_counter = 0
     while quantified_url is not None:
@@ -268,7 +265,7 @@ def augment(panda_input, iri_map, table_layout, colno, keep_original, iri_format
 
 
 def re_ontologise(input_file, output, layout, file_format, column_index, column_name, keep, target, uri_format,
-                  boundary, paxo, oxo_url, number, verbose):
+                  distance, paxo, oxo_url, number, verbose):
 
     target = sorted(target)
     # newsflash("Length of target ontology array is %d" % len(target))
@@ -288,7 +285,7 @@ def re_ontologise(input_file, output, layout, file_format, column_index, column_
         # iri_counter += 1
     panda_original = ss_dict['pandafued']
     newsflash("Calling map_iris with url = '%s' ..." % oxo_url)
-    map_iris(iri_map, target, boundary, paxo, oxo_url, number, verbose)
+    map_iris(iri_map, target, distance, paxo, oxo_url, number, verbose)
     newsflash("Calling augment ...")
     ontologically_enriched = augment(panda_original, iri_map, layout, column_index, keep, uri_format)
     """ Print out augmented_panda here ... """
@@ -355,20 +352,16 @@ def main():
                       help='name or heading of column containing source ontology terms')
     kmeg = parser2.add_mutually_exclusive_group(required=False)
     kmeg.add_argument('-k', '--keep', dest='keep', action='store_true', help='retain source ontology terms')
-    kmeg.add_argument('-d', '--no-keep', dest='keep', action='store_false', help='ditch source ontology terms')
-    # parser2.set_defaults(keep=cfg_sect_lookup('keep'))
+    kmeg.add_argument('-e', '--no-keep', dest='keep', action='store_false', help='ditch source ontology terms')
     parser2.add_argument('-t', '--target', nargs='+', default=target_list,
                          help='space-separated list of target ontology prefixes')
     parser2.add_argument('-u', '--uri-format', choices=['long', 'short', 'curie'],
                          default=cfg_sect_lookup('uri_format', 'string'),
                          help='format of target ontology term identifiers **NO CURRENT EFFECT**')
-    parser2.add_argument('-b', '--boundary', type=int, default=cfg_sect_lookup('boundary', 'int'),
-                         help="%s%s" % ('minimum percentage confidence threshold of target ontology term matches ',
-                                        '**NO CURRENT EFFECT: ENFORCE 100%% CONFIDENCE (OxO distance=1)**'))
+    parser2.add_argument('-d', '--distance', type=int, default=cfg_sect_lookup('distance', 'int'), choices=[1, 2, 3],
+                         help='stepwise OxO distance (ontology to ontology)')
     parser2.add_argument('-r', '--oxo-url', default=cfg_sect_lookup('oxo_url', 'string'),
                          help='OxO (or Paxo) web service URL')
-    # parser2.add_argument('-p', '--paxo', type=bool, nargs='?', const=True, default=False,
-    #                      help='Use Paxo web service rather than OxO **NO CURRENT EFFECT**')
     pmeg = parser2.add_mutually_exclusive_group(required=False)
     pmeg.add_argument('-p', '--paxo', dest='paxo', action='store_true', help='use Paxo rather than OxO')
     pmeg.add_argument('-z', '--no-paxo', dest='paxo', action='store_false', help='do not use Paxo: use OxO')
@@ -379,6 +372,9 @@ def main():
                       help="%s%s" % ('send verbose progess reports to standard error: ',
                                      'not recommended for regular use'))
     vmeg.add_argument('-q', '--quiet', dest='verbose', action='store_false', help='suppress verbose output')
+    # parser2.add_argument('-b', '--boundary', type=int, default=cfg_sect_lookup('boundary', 'int'),
+    #                      help="%s%s" % ('minimum percentage confidence threshold of target ontology term matches ',
+    #                                     '**NO CURRENT EFFECT: ENFORCE 100%% CONFIDENCE (OxO distance=1)**'))
     parser2.set_defaults(keep=cfg_sect_lookup('keep', 'boolean'), paxo=cfg_sect_lookup('paxo', 'boolean'),
                          verbose=cfg_sect_lookup('verbose', 'boolean'))
     parser2.add_argument('--version', action='version', version='%(prog)s 1.0')
@@ -404,7 +400,8 @@ def main():
 
     """ Don't check values of reserved options, which have no effect at the moment; also, column_index may be null """
     active_arg_dict = arg_dict.copy()
-    for inactive_arg in ['output', 'paxo', 'uri_format', 'boundary', 'column_index']:
+    # for inactive_arg in ['output', 'paxo', 'uri_format', 'boundary', 'column_index']:
+    for inactive_arg in ['output', 'paxo', 'uri_format', 'column_index']:
         active_arg_dict.pop(inactive_arg)
     if None in active_arg_dict.values():
         newsflash()

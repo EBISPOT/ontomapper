@@ -32,7 +32,7 @@ download these packages using the following command:
 ** Installation
 
 Just ~git clone~ this project, from ~master~, or ~dev~ if you're feeling only
-very slighly more adventurous: in either case, you will be able to execute the
+very slightly more adventurous: in either case, you will be able to execute the
 python script from the top-level working directory.
 
 ** Execution
