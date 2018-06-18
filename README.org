@@ -88,13 +88,17 @@ unchanged---just remember to specify a config file on the command line):
 8. ~--target ncit mesh doid~ /(example list)/: new ontology, or ontologies, to
    include in the output spreadsheet---supply the switch itself once only,
    followed by a single ontology or a space-separated list;
-9. ~--oxo-url~: URL of the OxO web service---internal EMBL/EBI users may
-   sometimes wish to use a development server, for example;
-10. ~--number~: HTTP requests involving large numbers of query terms should be
+9. ~--distance~: stepwise OxO distance (ontology to ontology), taking integer
+   values between 1 and 3 inclusive, where the greater the distance, the greater
+   the number of hits returned (necessarily so, because the set of hits at
+   distance = 2 includes hits with distance = 1, and so on);
+10. ~--oxo-url~: URL of the OxO web service---internal EMBL/EBI users may
+    sometimes wish to use a development server, for example;
+11. ~--number~: HTTP requests involving large numbers of query terms should be
     chunked---specifies maximum number of individual query terms per request;
-11. ~--verbose~ | ~--quiet~: whether to print a flood of program progress data
+12. ~--verbose~ | ~--quiet~: whether to print a flood of program progress data
     and reports, or keep it simple;
-12. ~--version~: show program's version number and exit.
+13. ~--version~: show program's version number and exit.
 
 Remember that single-letter shortcuts for all the above switches are available
 from the program help menu.
