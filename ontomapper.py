@@ -33,31 +33,32 @@ __PARAMETERS__ (to main program: all non-positional key/value pairs, to be initi
     13. config         : configuration file path
     14. quantity       : no. of query terms to include in single API call
     15. quiet/verbose  : do we want a bunch of large json objects dumped to standard error?; boolean, default = no
-    16. ????           : source ontology from which terms in existing spreadsheet come; default = 'EFO' --- Probably
+    16. mapping-file   : optional output file containing list of source to target term mappings
+    17. ????           : source ontology from which terms in existing spreadsheet come; default = 'EFO' --- Probably
                          unnecessary! --- check!!
-    17. ????           : input format of source IRIs?
-    18. ????           : option to change format of incoming IRIs before re-output (implies --keep)
-    19. ????           : boundary value (%age) for confidence level, incorporating both OxO distance and Paxo metric?
+    18. ????           : input format of source IRIs?
+    19. ????           : option to change format of incoming IRIs before re-output (implies --keep)
+    20. ????           : boundary value (%age) for confidence level, incorporating both OxO distance and Paxo metric?
 
 
 __FUNCTIONS__
 
 1. Return a dictionary containing two objects:
-     a) the contents of the original spreadsheet itself, as some kind of pandas thing?
-     b) a list of unique URIs
+     a) the contents of the original spreadsheet itself, as a pandas DataFrame
+     b) a dictionary with keys corresponding to a list of unique URIs
    params: see parameters list above
    return: two-element dictionary, as detailed above
     
-2. Map each URI in the original list to its equivalent (via OxO) in one or more other ontologies, returning a
-     dictionary with original URI as key, and a nested dictionary keyed on ontology name, with equivalent URI
-     in that ontology, plus either distance or normalised threshold incorporating distance, as the value.
+2. Map each URI in the original list to its equivalent (via OxO) in one or more other ontologies, modifying (not
+     returning, as such) a dictionary with original URI as key, and a nested dictionary keyed on ontology name, with
+     equivalent URI in that ontology, plus either distance or normalised threshold incorporating distance, as the value.
    params: unique URI list
-   return: dictionary
+   return: None
 
 3. Return a modified spreadsheet based on the input speadsheet and the URI mappings
-   params: a) pandas representation of original spreadsheet
+   params: a) pandas DataFrame representation of original spreadsheet
            b) dictionary object containing URI mappings
-   return: pandas representation of modified spreadsheet, including new ontology column(s)
+   return: pandas DataFrame representation of modified spreadsheet, including new ontology column(s)
 """
 
 
@@ -265,7 +266,7 @@ def augment(panda_input, iri_map, table_layout, colno, keep_original, iri_format
 
 
 def re_ontologise(input_file, output, layout, file_format, column_index, column_name, keep, target, uri_format,
-                  distance, paxo, oxo_url, number, verbose):
+                  distance, paxo, oxo_url, number, verbose, mapping_file):
 
     target = sorted(target)
     # newsflash("Length of target ontology array is %d" % len(target))
@@ -286,6 +287,14 @@ def re_ontologise(input_file, output, layout, file_format, column_index, column_
     panda_original = ss_dict['pandafued']
     newsflash("Calling map_iris with url = '%s' ..." % oxo_url)
     map_iris(iri_map, target, distance, paxo, oxo_url, number, verbose)
+
+    """ Print a tab-separated list of source and target terms, if --mapping-file switch specified """
+    if mapping_file is not None:
+        with open(mapping_file, 'w') as emf:
+            for efo_iri in iri_map.keys():
+                for efo_map in iri_map[efo_iri]:
+                    print("%s\t%s" % (efo_iri, efo_map), file=emf)
+
     newsflash("Calling augment ...")
     ontologically_enriched = augment(panda_original, iri_map, layout, column_index, keep, uri_format)
     """ Print out augmented_panda here ... """
@@ -372,6 +381,8 @@ def main():
                       help="%s%s" % ('send verbose progess reports to standard error: ',
                                      'not recommended for regular use'))
     vmeg.add_argument('-q', '--quiet', dest='verbose', action='store_false', help='suppress verbose output')
+    parser2.add_argument('-m', '--mapping-file',  # default=cfg_sect_lookup('mapping_file', 'string'),
+                         help='optional extra output file with tab-separated list of source to target term mappings')
     # parser2.add_argument('-b', '--boundary', type=int, default=cfg_sect_lookup('boundary', 'int'),
     #                      help="%s%s" % ('minimum percentage confidence threshold of target ontology term matches ',
     #                                     '**NO CURRENT EFFECT: ENFORCE 100%% CONFIDENCE (OxO distance=1)**'))
@@ -400,8 +411,7 @@ def main():
 
     """ Don't check values of reserved options, which have no effect at the moment; also, column_index may be null """
     active_arg_dict = arg_dict.copy()
-    # for inactive_arg in ['output', 'paxo', 'uri_format', 'boundary', 'column_index']:
-    for inactive_arg in ['output', 'paxo', 'uri_format', 'column_index']:
+    for inactive_arg in ['output', 'paxo', 'uri_format', 'column_index', 'mapping_file']:
         active_arg_dict.pop(inactive_arg)
     if None in active_arg_dict.values():
         newsflash()

@@ -60,7 +60,7 @@ unchanged---just remember to specify a config file on the command line):
 
 1. ~--config ontomapper.ini~ /(default config, provided)/: config file in ~.ini~
    format, containing default values for other switches;
-2. ~--input-file ./gwas_subset.tsv~ /(example file, yet to be provided)/:
+2. ~--input-file ./gwas_subset.tsv~ /(example file, provided herewith)/:
    filepath or URL specifying location of input spreadsheet, one column of which
    should contain source ontology terms;
 3. ~--format~ [ ~csv~ | ~tsv~ ]: text format of spreadsheet file (2 options only
@@ -98,7 +98,9 @@ unchanged---just remember to specify a config file on the command line):
     chunked---specifies maximum number of individual query terms per request;
 12. ~--verbose~ | ~--quiet~: whether to print a flood of program progress data
     and reports, or keep it simple;
-13. ~--version~: show program's version number and exit.
+13. ~--mapping-file~: filepath for optionally outputting list of source to
+    target term mappings;
+14. ~--version~: show program's version number and exit.
 
 Remember that single-letter shortcuts for all the above switches are available
 from the program help menu.
@@ -125,12 +127,25 @@ tab-separated-variable (spreadsheet) file:
   $ ./ontomapper.py --config ontomapper.ini --target mesh doid --layout multi-column --no-keep > gwas_new.tsv
 #+END_SRC
 
-Or to do something equivalent, taking as input the provided GWAS spreadsheet
-subset sample, and this time using one-character switch shortcuts:
+To do something equivalent, taking as input the provided GWAS spreadsheet subset
+sample, and this time using one-character switch shortcuts:
 
 #+BEGIN_SRC sh
   $ ./ontomapper.py -g ontomapper.ini -i gwas_subset.tsv -t mesh doid -l multi-column -d > gwas_new_subset.tsv
 #+END_SRC
+
+To obtain a list of current EFO->MeSH mappings only, without generating a full
+'replacement' GWAS spreadsheet containing the mapped terms:
+
+#+BEGIN_SRC sh
+  $ ./ontomapper.py --config ontomapper.ini --mapping-file efo_mesh_mappings.tsv --target mesh > /dev/null
+#+END_SRC
+
+Note that although the last option above implicitly takes default values for
+most parameters, in this case the output is unaffected by these defaults,
+because it is effectively an intermediate file in the standard pipeline which is
+desired, rather than the usual endpoint (i.e. a full version of the GWAS
+spreadshet, with mapped ontology terms).
 
 Look at ~ontomapper.ini~ for default values of other parameters, any or all of
 which can be changed in the config, or overridden on the command line.
