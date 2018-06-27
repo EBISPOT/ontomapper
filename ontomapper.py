@@ -259,8 +259,10 @@ def augment(panda_input, iri_map, table_layout, colno, keep_original, iri_format
         # extra_columns_df = pd.DataFrame(extra_col_dict_list,
         #                                 columns=[colname] if table_layout == 'uni-column' else tg_series.keys())
         extra_columns_df = pd.DataFrame(extra_col_dict_list)
-        panda_output = pd.concat([panda_output.loc[:, :colname if keep_original else prev_colname], extra_columns_df,
-                                  panda_output.loc[:, next_colname:]], axis=1)
+        panda_output = pd.concat([
+            None if colno == 0 and not keep_original else
+            panda_output.loc[:, :colname if keep_original else prev_colname], extra_columns_df,
+            None if colno == len(panda_input.columns) - 1 else panda_output.loc[:, next_colname:]], axis=1)
 
     return panda_output
 
@@ -372,7 +374,8 @@ def main():
     parser2.add_argument('-r', '--oxo-url', default=cfg_sect_lookup('oxo_url', 'string'),
                          help='OxO (or Paxo) web service URL')
     pmeg = parser2.add_mutually_exclusive_group(required=False)
-    pmeg.add_argument('-p', '--paxo', dest='paxo', action='store_true', help='use Paxo rather than OxO')
+    pmeg.add_argument('-p', '--paxo', dest='paxo', action='store_true',
+                      help='use Paxo rather than OxO **NO CURRENT EFFECT**')
     pmeg.add_argument('-z', '--no-paxo', dest='paxo', action='store_false', help='do not use Paxo: use OxO')
     parser2.add_argument('-n', '--number', type=int, default=cfg_sect_lookup('query_term_number', 'int'),
                          help='number of query terms to chunk, per HTTP request on the OxO web service')
