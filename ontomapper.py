@@ -294,8 +294,9 @@ def re_ontologise(input_file, output, layout, file_format, column_index, column_
     if mapping_file is not None:
         with open(mapping_file, 'w') as emf:
             for efo_iri in iri_map.keys():
-                for efo_map in iri_map[efo_iri]:
-                    print("%s\t%s" % (efo_iri, efo_map), file=emf)
+                for efo_map in iri_map[efo_iri].values():
+                    for efo_single in efo_map.split(', '):
+                        print("%s\t%s" % (efo_iri, efo_single), file=emf)
 
     newsflash("Calling augment ...")
     ontologically_enriched = augment(panda_original, iri_map, layout, column_index, keep, uri_format)
