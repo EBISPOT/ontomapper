@@ -138,15 +138,17 @@ def map_iris(iri_dict, target_ontologies, distance, use_paxo, oxo_inner_url, que
                            (oxo_hit_counter, oxo_hit_counter * query_size))
             raise
         for this_result in these_results:
+            source_label = this_result["label"]
             hits = this_result["mappingResponseList"]
             ontology_dict = {}
             for hit in hits:
                 target_ontology = hit['targetPrefix']
                 """ Create one key per target ontology, then append individual hits to associated array """
-                ontology_dict.setdefault(target_ontology, []).append(hit['curie'])
-            for okey in ontology_dict:
-                ontology_dict[okey] = ', '.join(ontology_dict[okey])
-            iri_dict[this_result["queryId"]] = ontology_dict
+                ontology_dict.setdefault(
+                    target_ontology, []).append({'curie': hit['curie'], 'target_label': hit['label']})
+            # for okey in ontology_dict:
+                # ontology_dict[okey] = ', '.join(ontology_dict[okey])
+            iri_dict[this_result["queryId"]] = {'source_label': source_label, 'ontodict': ontology_dict}
             # newsflash(ontology_dict)
         try:
             quantified_url = json_string["_links"]["next"]["href"]
@@ -190,12 +192,24 @@ def augment(panda_input, iri_map, table_layout, colno, keep_original, iri_format
             # newsflash("Source term is %s" % source_term)
             # map_dict = iri_map[source_term]
             map_dict = iri_map.get(source_term)
+            # print('map_dict below ...', file=sys.stderr)
+            # print(map_dict, file=sys.stderr)
             if map_dict:
-                for m in map_dict:
+                for m in map_dict['ontodict']:
+                    # print(m, file=sys.stderr)
                     """ target_groups assigned one key per target ontology --- NOT per source term in source cell! """
-                    target_groups.setdefault(m, []).append(map_dict[m])
-                    # newsflash("Found term %s" % map_dict[m])
+                    # target_groups.setdefault(m, []).append(map_dict['ontodict'][m])
+                    ncount = 0;
+                    for n in map_dict['ontodict'][m]:
+                        target_groups.setdefault(m, []).append(map_dict['ontodict'][m][ncount]['curie'])
+                        ncount += 1
+
         for target_group in target_groups:
+            # newsflash("Data type of target_groups: %s" % type(target_groups))
+            # newsflash("Data type of target_group: %s" % type(target_group))
+            # newsflash("target_group: %s" % target_group)
+            # newsflash("Data type of target_groups[target_group]: %s" % type(target_groups[target_group]))
+            # print(target_groups[target_group], file=sys.stderr)
             target_groups[target_group] = ', '.join(target_groups[target_group])
         tg_series = pd.Series(target_groups)
         # tg_series = tg_series.reindex(sorted(tg_series.index))
@@ -294,9 +308,14 @@ def re_ontologise(input_file, output, layout, file_format, column_index, column_
     if mapping_file is not None:
         with open(mapping_file, 'w') as emf:
             for efo_iri in iri_map.keys():
-                for efo_map in iri_map[efo_iri].values():
-                    for efo_single in efo_map.split(', '):
-                        print("%s\t%s" % (efo_iri, efo_single), file=emf)
+                # for efo_map in iri_map[efo_iri].values():
+                #     for efo_single in efo_map.split(', '):
+                #         print("%s\t%s" % (efo_iri, efo_single), file=emf)
+                ## for efo_map in iri_map[efo_iri]:
+                for efo_map in iri_map[efo_iri]['ontodict'].values():
+                    for efo_single in efo_map:
+                        print("%s\t%s\t%s\t%s" % (efo_iri, iri_map[efo_iri]['source_label'], efo_single['curie'],
+                                                  efo_single['target_label']), file=emf)
 
     newsflash("Calling augment ...")
     ontologically_enriched = augment(panda_original, iri_map, layout, column_index, keep, uri_format)
