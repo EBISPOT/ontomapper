@@ -145,7 +145,7 @@ def map_iris(iri_dict, target_ontologies, distance, use_paxo, oxo_inner_url, que
                 target_ontology = hit['targetPrefix']
                 """ Create one key per target ontology, then append individual hits to associated array """
                 ontology_dict.setdefault(
-                    target_ontology, []).append({'curie': hit['curie'], 'target_label': hit['label']})
+                    target_ontology, []).append({'curie': hit['curie'], 'target_label': hit['label'], 'distance': hit['distance']})
             # for okey in ontology_dict:
                 # ontology_dict[okey] = ', '.join(ontology_dict[okey])
             iri_dict[this_result["queryId"]] = {'source_label': source_label, 'ontodict': ontology_dict}
@@ -314,8 +314,8 @@ def re_ontologise(input_file, output, layout, file_format, column_index, column_
                 ## for efo_map in iri_map[efo_iri]:
                 for efo_map in iri_map[efo_iri]['ontodict'].values():
                     for efo_single in efo_map:
-                        print("%s\t%s\t%s\t%s" % (efo_iri, iri_map[efo_iri]['source_label'], efo_single['curie'],
-                                                  efo_single['target_label']), file=emf)
+                        print("%s\t%s\t%s\t%s\t%d" % (efo_iri, iri_map[efo_iri]['source_label'], efo_single['curie'],
+                                                      efo_single['target_label'], efo_single['distance']), file=emf)
 
     newsflash("Calling augment ...")
     ontologically_enriched = augment(panda_original, iri_map, layout, column_index, keep, uri_format)
